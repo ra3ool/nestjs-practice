@@ -1,3 +1,6 @@
 export interface Invoice{
-    name: string
+    id: string;
+    user: number;
+    amount: number;
+    description?: string;  
 }

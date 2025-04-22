@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
 import { InvoiceService } from "./invoice.service";
 import { Invoice } from "./invoice.model";
+import { InvoiceDto } from "./dto/invoice.dto";
 
 @Controller('invoices')
 export class InvoiceController {
@@ -12,7 +13,7 @@ export class InvoiceController {
     }
 
     @Post()
-    addInvoice(@Body() invoice: Invoice): Invoice {
+    addInvoice(@Body() invoice: InvoiceDto): Invoice {
         return this.invoiceService.addInvoice(invoice)
     }
 }
