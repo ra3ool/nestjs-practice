@@ -1,5 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { Invoice } from "./invoice.model";
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class InvoiceService {
@@ -9,7 +10,17 @@ export class InvoiceService {
         return this.invoices
     }
 
-    addInvoice(invoice): Invoice {
+    getInvoiceById(id: string): Invoice {
+        const invoice = this.invoices.find(invoice => invoice.id === id)
+        if(!invoice) throw new NotFoundException
+        return invoice
+    }
+
+    addInvoice(invoiceData): Invoice {
+        const invoice = {
+            id: uuidv4(),
+            ...invoiceData
+        }
         this.invoices.push(invoice)
         return invoice
     }

@@ -1,9 +1,9 @@
-import { IsNumber, IsString, IsOptional, IsPositive } from 'class-validator';
+import { IsNumber, IsString, IsOptional, IsPositive, IsArray } from 'class-validator';
 
 export class InvoiceDto {
   @IsNumber()
   @IsPositive()
-  user: number;
+  userId: number;
 
   @IsNumber()
   @IsPositive()
@@ -12,4 +12,7 @@ export class InvoiceDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsArray()
+  items: any
 }
