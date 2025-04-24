@@ -8,24 +8,30 @@ import { IUser } from 'src/auth/user.model';
 export class InvoiceService {
   private invoices: Invoice[] = []; // Specify the type of the invoices array
 
-  getAllInvoices(): Invoice[] {
-    return this.invoices;
+  getAllInvoices(user: IUser): Invoice[] {
+    return this.invoices.filter(
+      (invoice) => invoice.customer === user.username,
+    );
   }
 
-  getInvoiceById(id: string): Invoice {
-    const invoice = this.invoices.find((invoice) => invoice.id === id);
+  getInvoiceById(id: string, user: IUser): Invoice {
+    const invoice = this.invoices.find(
+      (invoice) =>
+        invoice.customer === user.username && invoice.reference === id,
+    );
     if (!invoice)
       throw new NotFoundException(`Invoice with ID ${id} not found`);
     return invoice;
   }
 
   addInvoice(invoiceData: InvoiceDto, user: IUser): Invoice {
-    // Ensure the input data excludes the 'id' field
+    const { amount, items } = invoiceData;
     const invoice: Invoice = {
-      id: uuidv4(),
-      userId: user.username,
-      createdAt: new Date(),
-      ...invoiceData,
+      reference: uuidv4(),
+      customer: user.username,
+      date: new Date(),
+      amount,
+      items,
     };
     this.invoices.push(invoice);
     return invoice;

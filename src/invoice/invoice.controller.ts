@@ -11,13 +11,13 @@ export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   @Get()
-  getAllInvoices(): Invoice[] {
-    return this.invoiceService.getAllInvoices();
+  getAllInvoices(@User() user: IUser): Invoice[] {
+    return this.invoiceService.getAllInvoices(user);
   }
 
   @Get(':id')
-  getInvoiceById(@Param('id') id: string): Invoice {
-    return this.invoiceService.getInvoiceById(id);
+  getInvoiceById(@Param('id') id: string, @User() user: IUser): Invoice {
+    return this.invoiceService.getInvoiceById(id, user);
   }
 
   @Post()
