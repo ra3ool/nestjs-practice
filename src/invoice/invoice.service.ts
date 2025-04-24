@@ -2,19 +2,19 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Invoice } from './invoice.model';
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceDto } from './dto/invoice.dto';
-import { IUser } from 'src/auth/user.model';
+import { User } from 'src/auth/user.model';
 
 @Injectable()
 export class InvoiceService {
   private invoices: Invoice[] = []; // Specify the type of the invoices array
 
-  getAllInvoices(user: IUser): Invoice[] {
+  getAllInvoices(user: User): Invoice[] {
     return this.invoices.filter(
       (invoice) => invoice.customer === user.username,
     );
   }
 
-  getInvoiceById(id: string, user: IUser): Invoice {
+  getInvoiceById(id: string, user: User): Invoice {
     const invoice = this.invoices.find(
       (invoice) =>
         invoice.customer === user.username && invoice.reference === id,
@@ -24,7 +24,7 @@ export class InvoiceService {
     return invoice;
   }
 
-  addInvoice(invoiceData: InvoiceDto, user: IUser): Invoice {
+  addInvoice(invoiceData: InvoiceDto, user: User): Invoice {
     const { amount, items } = invoiceData;
     const invoice: Invoice = {
       reference: uuidv4(),
