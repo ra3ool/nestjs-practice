@@ -9,10 +9,6 @@ import {
 export class InvoiceDto {
   @IsNumber()
   @IsPositive()
-  userId: number;
-
-  @IsNumber()
-  @IsPositive()
   amount: number;
 
   @IsString()

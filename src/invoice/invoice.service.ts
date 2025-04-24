@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Invoice } from './invoice.model';
 import { v4 as uuidv4 } from 'uuid';
+import { InvoiceDto } from './dto/invoice.dto';
 
 @Injectable()
 export class InvoiceService {
@@ -17,10 +18,11 @@ export class InvoiceService {
     return invoice;
   }
 
-  addInvoice(invoiceData: Omit<Invoice, 'id'>): Invoice {
+  addInvoice(invoiceData: InvoiceDto): Invoice {
     // Ensure the input data excludes the 'id' field
     const invoice: Invoice = {
       id: uuidv4(),
+      userId: 2,
       ...invoiceData,
     };
     this.invoices.push(invoice);
