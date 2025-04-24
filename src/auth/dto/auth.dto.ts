@@ -1,12 +1,6 @@
-import {
-  IsString,
-  IsNotEmpty,
-  MinLength,
-  MaxLength,
-  Matches,
-} from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
 
-export class AuthSignupDto {
+export class AuthCredentialsDto {
   @IsString()
   @MinLength(4)
   @MaxLength(20)
@@ -18,16 +12,6 @@ export class AuthSignupDto {
   @Matches(/(?:(?=.*\d)(?=.*[A-Z])(?=.*[a-z]).*)/, {
     message: 'Password must be strong (1 upper, 1 lower, 1 digit)',
   })
-  password: string;
-}
-
-export class LoginDto {
-  @IsString()
-  @IsNotEmpty()
-  username: string;
-
-  @IsString()
-  @IsNotEmpty()
   password: string;
 }
 

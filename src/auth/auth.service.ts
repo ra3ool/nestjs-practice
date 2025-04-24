@@ -1,41 +1,33 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { AuthCredentialsDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.model';
-import { AuthResponseDto } from './dto/auth.dto';
+import { v4 as uuidv4 } from 'uuid';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  private users: User[] = [];
 
-  async validateUser(
-    username: string,
-    password: string,
-  ): Promise<Omit<User, 'password'> | null> {
-    // TODO: Replace with your actual user validation logic
-    // This is just an example
-    const user: User = {
-      id: '1',
-      username: 'rasool',
-      password: await bcrypt.hash('Pass1234', 10),
-    };
+  constructor(private jwtService: JwtService) {}
 
-    if (
-      username === user.username &&
-      (await bcrypt.compare(password, user.password))
-    ) {
-      const { password, ...result } = user;
-      return result;
-    }
-    return null;
+  async signUp({ username, password }: AuthCredentialsDto): Promise<void> {
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
+    this.users.push({ id: uuidv4(), username, password: hashedPassword });
   }
 
-  async login(user: Omit<User, 'password'>): Promise<AuthResponseDto> {
-    const payload = {
-      username: user.username,
-      sub: user.id,
-    };
-    const accessToken = await this.jwtService.sign(payload);
-    return { accessToken };
+  async signIn({
+    username,
+    password,
+  }: AuthCredentialsDto): Promise<{ accessToken: string }> {
+    const user = this.users.find((u) => u.username === username);
+    if (user && (await bcrypt.compare(password, user.password))) {
+      const payload = { username };
+      const accessToken = await this.jwtService.signAsync(payload);
+      return { accessToken };
+    } else {
+      throw new UnauthorizedException('Login failed');
+    }
   }
 }
