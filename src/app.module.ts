@@ -4,4 +4,4 @@ import { InvoiceModule } from './invoice/invoice.module';
 @Module({
   imports: [InvoiceModule],
 })
-export class AppModule { }
+export class AppModule {}

@@ -1,6 +1,6 @@
-export interface Invoice{
-    id: string;
-    userId: number;
-    amount: number;
-    description?: string;  
+export interface Invoice {
+  id: string;
+  userId: number;
+  amount: number;
+  description?: string;
 }

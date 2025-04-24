@@ -1,4 +1,10 @@
-import { IsNumber, IsString, IsOptional, IsPositive, IsArray } from 'class-validator';
+import {
+  IsNumber,
+  IsString,
+  IsOptional,
+  IsPositive,
+  IsArray,
+} from 'class-validator';
 
 export class InvoiceDto {
   @IsNumber()
@@ -14,5 +20,5 @@ export class InvoiceDto {
   description?: string;
 
   @IsArray()
-  items: any
+  items: any;
 }
