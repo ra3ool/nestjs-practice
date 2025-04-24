@@ -1,6 +1,7 @@
 export interface Invoice {
   id: string;
-  userId: number;
+  userId: string;
   amount: number;
   description?: string;
+  createdAt: Date;
 }
