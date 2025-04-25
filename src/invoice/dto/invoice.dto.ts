@@ -1,4 +1,11 @@
-import { IsNumber, IsPositive, IsArray, IsString } from 'class-validator';
+import {
+  IsNumber,
+  IsPositive,
+  IsArray,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class InvoiceDto {
   @IsNumber()
@@ -6,6 +13,8 @@ export class InvoiceDto {
   amount: number;
 
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InvoiceItemsDto)
   items: InvoiceItemsDto[];
 }
 
