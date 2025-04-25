@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
 import { InvoiceDto } from './dto/invoice.dto';
-import { User } from '../auth/user.model';
+import { User } from '../auth/user/user.model';
 
 describe('InvoiceController', () => {
   let controller: InvoiceController;

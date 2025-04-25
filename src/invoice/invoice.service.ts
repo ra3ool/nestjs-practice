@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Invoice } from './invoice.schema';
 import { InvoiceDto } from './dto/invoice.dto';
-import { User } from '../auth/user.model';
+import { User } from '../auth/user/user.model';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -13,8 +13,7 @@ export class InvoiceService {
   ) {}
 
   async getAllInvoices(user: User): Promise<Invoice[]> {
-    // Fetch invoices only for the authenticated user
-    return this.invoiceModel.find({ customer: user.username }).exec();
+    return this.invoiceModel.find({ customer: user.id }).exec();
   }
 
   async getInvoiceById(id: string, user: User): Promise<Invoice> {
@@ -24,7 +23,7 @@ export class InvoiceService {
     }
 
     const invoice = await this.invoiceModel
-      .findOne({ _id: id, customer: user.username })
+      .findOne({ _id: id, customer: user.id })
       .exec();
 
     if (!invoice) {
@@ -37,12 +36,12 @@ export class InvoiceService {
   }
 
   async addInvoice(invoiceData: InvoiceDto, user: User): Promise<Invoice> {
-    const { amount, items } = invoiceData; // destructure amount and items from invoiceData
+    const { amount, items } = invoiceData;
     const newInvoice = new this.invoiceModel({
       amount,
       items,
       reference: uuidv4(), // Generate a unique reference ID
-      customer: user.username,
+      customer: user.id,
       date: new Date(), // Automatically set the date
     });
     return newInvoice.save();

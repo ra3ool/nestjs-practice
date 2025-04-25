@@ -4,7 +4,7 @@ import { Invoice } from './invoice.model';
 import { InvoiceDto } from './dto/invoice.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/user.decorator';
-import { User } from '../auth/user.model';
+import { User } from '../auth/user/user.model';
 @Controller('invoices')
 @UseGuards(JwtAuthGuard)
 export class InvoiceController {
