@@ -32,9 +32,9 @@ describe('InvoiceController', () => {
         {
           provide: InvoiceService,
           useValue: {
-            getAllInvoices: jest.fn().mockReturnValue([mockInvoice]),
-            getInvoiceById: jest.fn().mockReturnValue(mockInvoice),
-            addInvoice: jest.fn().mockReturnValue(mockInvoice),
+            getAllInvoices: jest.fn().mockResolvedValue([mockInvoice]), // Use mockResolvedValue for async methods
+            getInvoiceById: jest.fn().mockResolvedValue(mockInvoice),
+            addInvoice: jest.fn().mockResolvedValue(mockInvoice),
           },
         },
       ],
@@ -49,24 +49,24 @@ describe('InvoiceController', () => {
   });
 
   describe('getAllInvoices', () => {
-    it('should return all invoices for the user', () => {
-      const result = controller.getAllInvoices(mockUser);
+    it('should return all invoices for the user', async () => {
+      const result = await controller.getAllInvoices(mockUser);
       expect(result).toEqual([mockInvoice]);
       expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser);
     });
   });
 
   describe('getInvoiceById', () => {
-    it('should return a single invoice by ID', () => {
-      const result = controller.getInvoiceById('12345', mockUser);
+    it('should return a single invoice by ID', async () => {
+      const result = await controller.getInvoiceById('12345', mockUser);
       expect(result).toEqual(mockInvoice);
       expect(service.getInvoiceById).toHaveBeenCalledWith('12345', mockUser);
     });
   });
 
   describe('addInvoice', () => {
-    it('should create a new invoice', () => {
-      const result = controller.addInvoice(mockInvoiceDto, mockUser);
+    it('should create a new invoice', async () => {
+      const result = await controller.addInvoice(mockInvoiceDto, mockUser);
       expect(result).toEqual(mockInvoice);
       expect(service.addInvoice).toHaveBeenCalledWith(mockInvoiceDto, mockUser);
     });
