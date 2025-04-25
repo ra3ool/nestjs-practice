@@ -11,17 +11,23 @@ export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   @Get()
-  getAllInvoices(@GetUser() user: User): Invoice[] {
+  getAllInvoices(@GetUser() user: User): Promise<Invoice[]> {
     return this.invoiceService.getAllInvoices(user);
   }
 
   @Get(':id')
-  getInvoiceById(@Param('id') id: string, @GetUser() user: User): Invoice {
+  getInvoiceById(
+    @Param('id') id: string,
+    @GetUser() user: User,
+  ): Promise<Invoice> {
     return this.invoiceService.getInvoiceById(id, user);
   }
 
   @Post()
-  addInvoice(@Body() invoice: InvoiceDto, @GetUser() user: User): Invoice {
+  addInvoice(
+    @Body() invoice: InvoiceDto,
+    @GetUser() user: User,
+  ): Promise<Invoice> {
     return this.invoiceService.addInvoice(invoice, user);
   }
 }
