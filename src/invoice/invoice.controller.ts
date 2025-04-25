@@ -3,8 +3,8 @@ import { InvoiceService } from './invoice.service';
 import { Invoice } from './invoice.model';
 import { InvoiceDto } from './dto/invoice.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { GetUser } from 'src/auth/decorators/user.decorator';
-import { User } from 'src/auth/user.model';
+import { GetUser } from '../auth/decorators/user.decorator';
+import { User } from '../auth/user.model';
 @Controller('invoices')
 @UseGuards(JwtAuthGuard)
 export class InvoiceController {

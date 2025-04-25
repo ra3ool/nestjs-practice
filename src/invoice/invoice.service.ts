@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Invoice } from './invoice.model';
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceDto } from './dto/invoice.dto';
-import { User } from 'src/auth/user.model';
+import { User } from '../auth/user.model';
 
 @Injectable()
 export class InvoiceService {
