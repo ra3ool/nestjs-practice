@@ -15,8 +15,8 @@ export class Invoice extends Document {
   @Prop({ required: true })
   date: Date;
 
-  @Prop({ type: [{ sku: String, qt: String }] })
-  items: { sku: string; qt: string }[];
+  @Prop({ type: [{ sku: String, qt: Number }] })
+  items: { sku: string; qt: number }[];
 }
 
 export const InvoiceSchema = SchemaFactory.createForClass(Invoice);

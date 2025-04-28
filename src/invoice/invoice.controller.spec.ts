@@ -18,7 +18,7 @@ describe('InvoiceController', () => {
 
   const mockInvoiceDto: InvoiceDto = {
     amount: 100,
-    items: [{ sku: 'item1', qt: '2' }],
+    items: [{ sku: 'item1', qt: 2 }],
   };
 
   const mockInvoice = {
@@ -26,7 +26,7 @@ describe('InvoiceController', () => {
     customer: 'testuser',
     date: new Date(),
     amount: 100,
-    items: [{ sku: 'item1', qt: '2' }],
+    items: [{ sku: 'item1', qt: 2 }],
   };
 
   beforeAll(async () => {

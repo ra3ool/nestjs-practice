@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Invoice } from './invoice.schema';
@@ -7,9 +7,12 @@ import { User } from '../auth/user/user.model';
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFilters } from './invoice.model';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class InvoiceService {
+  private readonly logger = new Logger(InvoiceService.name);
+
   constructor(
     @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
   ) {}
@@ -74,5 +77,55 @@ export class InvoiceService {
       date: new Date(), // Automatically set the date
     });
     return newInvoice.save();
+  }
+
+  // Cron job to run daily at 12:00 PM
+  @Cron(CronExpression.EVERY_DAY_AT_NOON)
+  async generateDailySalesSummary(): Promise<void> {
+    this.logger.log('Generating daily sales summary...');
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Calculate total sales for the day
+    const totalSales = await this.invoiceModel.aggregate([
+      {
+        $match: {
+          date: { $gte: startOfDay, $lte: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: '$amount' },
+        },
+      },
+    ]);
+
+    // Calculate total quantity sold per item (grouped by SKU)
+    const itemsSummary = await this.invoiceModel.aggregate([
+      {
+        $match: {
+          date: { $gte: startOfDay, $lte: endOfDay },
+        },
+      },
+      {
+        $unwind: '$items',
+      },
+      {
+        $group: {
+          _id: '$items.sku',
+          totalQuantity: { $sum: '$items.qt' },
+        },
+      },
+    ]);
+
+    // Log the summary (you can replace this with saving to a database or sending an email)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    this.logger.log(`Total Sales: ${totalSales[0]?.totalAmount || 0}`);
+    this.logger.log('Items Summary:', itemsSummary);
   }
 }

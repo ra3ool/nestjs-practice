@@ -1,6 +1,6 @@
 interface items {
   sku: string; //Stock Keeping Unit, unique identifier for the item
-  qt: string; //Quantity of the item
+  qt: number; //Quantity of the item
 }
 export interface Invoice {
   customer: string; //The name or identifier of the customer

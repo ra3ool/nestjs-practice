@@ -22,6 +22,6 @@ export class InvoiceItemsDto {
   @IsString()
   sku: string;
 
-  @IsString()
-  qt: string;
+  @IsNumber()
+  qt: number;
 }

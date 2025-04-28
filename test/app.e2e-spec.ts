@@ -29,7 +29,7 @@ describe('InvoiceController (Integration)', () => {
 
   const testInvoiceData: InvoiceDto = {
     amount: 100,
-    items: [{ sku: 'item1', qt: '2' }],
+    items: [{ sku: 'item1', qt: 2 }],
   };
 
   const makeRequest = (method: string, url: string, body?: any) => {
