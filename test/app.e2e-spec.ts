@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-base-to-string */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
@@ -100,6 +106,22 @@ describe('InvoiceController (Integration)', () => {
       const response = await makeRequest('get', '/invoices').expect(200);
       const firstInvoice = response.body[0];
       expect(firstInvoice).toMatchObject(createdInvoice);
+    });
+  });
+
+  describe('GET /invoices with filters', () => {
+    it('should filter invoices by date range', async () => {
+      const response = await makeRequest('get', '/invoices')
+        .query({ startDate: '2025-04-01', endDate: '2025-04-30' })
+        .expect(200);
+      expect(response.body).toEqual([createdInvoice]);
+    });
+
+    it('should filter invoices by amount range', async () => {
+      const response = await makeRequest('get', '/invoices')
+        .query({ minAmount: 50, maxAmount: 150 })
+        .expect(200);
+      expect(response.body).toEqual([createdInvoice]);
     });
   });
 });

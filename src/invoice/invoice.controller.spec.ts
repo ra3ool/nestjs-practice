@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
 import { InvoiceDto } from './dto/invoice.dto';
 import { User } from '../auth/user/user.model';
+import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 
 describe('InvoiceController', () => {
   let controller: InvoiceController;
@@ -54,15 +56,35 @@ describe('InvoiceController', () => {
 
   describe('getAllInvoices', () => {
     it('should return all invoices for the user', async () => {
-      const result = await controller.getAllInvoices(mockUser);
+      const result = await controller.getAllInvoices(mockUser, undefined); // Include `undefined` for filters
       expect(result).toEqual([mockInvoice]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser);
+      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined); // Include `undefined` for filters
     });
 
     it('should handle empty invoices', async () => {
       service.getAllInvoices.mockResolvedValueOnce([]);
-      const result = await controller.getAllInvoices(mockUser);
+      const result = await controller.getAllInvoices(mockUser, undefined); // Include `undefined` for filters
       expect(result).toEqual([]);
+      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined); // Include `undefined` for filters
+    });
+  });
+
+  describe('getAllInvoices with filters', () => {
+    it('should filter invoices by date range', async () => {
+      const filters: InvoiceFiltersDto = {
+        startDate: new Date('2025-04-01'),
+        endDate: new Date('2025-04-30'),
+      };
+      const result = await controller.getAllInvoices(mockUser, filters);
+      expect(result).toEqual([mockInvoice]);
+      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, filters);
+    });
+
+    it('should filter invoices by amount range', async () => {
+      const filters = { minAmount: 50, maxAmount: 150 };
+      const result = await controller.getAllInvoices(mockUser, filters);
+      expect(result).toEqual([mockInvoice]);
+      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, filters);
     });
   });
 
