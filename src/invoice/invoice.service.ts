@@ -5,6 +5,8 @@ import { Invoice } from './invoice.schema';
 import { InvoiceDto } from './dto/invoice.dto';
 import { User } from '../auth/user/user.model';
 import { v4 as uuidv4 } from 'uuid';
+import { InvoiceFilters } from './invoice.model';
+import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 
 @Injectable()
 export class InvoiceService {
@@ -12,8 +14,35 @@ export class InvoiceService {
     @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
   ) {}
 
-  async getAllInvoices(user: User): Promise<Invoice[]> {
-    return this.invoiceModel.find({ customer: user.id }).exec();
+  async getAllInvoices(
+    user: User,
+    filters?: InvoiceFiltersDto,
+  ): Promise<Invoice[]> {
+    const query: InvoiceFilters = { customer: user.id };
+
+    if (filters) {
+      if (filters.startDate || filters.endDate) {
+        query.date = {};
+        if (filters.startDate) {
+          query.date.$gte = filters.startDate;
+        }
+        if (filters.endDate) {
+          query.date.$lte = filters.endDate;
+        }
+      }
+
+      if (filters.minAmount || filters.maxAmount) {
+        query.amount = {};
+        if (filters.minAmount) {
+          query.amount.$gte = filters.minAmount;
+        }
+        if (filters.maxAmount) {
+          query.amount.$lte = filters.maxAmount;
+        }
+      }
+    }
+
+    return this.invoiceModel.find(query).exec();
   }
 
   async getInvoiceById(id: string, user: User): Promise<Invoice> {
