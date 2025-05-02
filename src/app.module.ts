@@ -22,8 +22,8 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'EMAIL_SERVICE',
         transport: Transport.RMQ,
         options: {
-          urls: ['amqp://localhost:5672'], // RabbitMQ URL
-          queue: 'daily_sales_report', // Queue name
+          urls: [process.env.RMQ_URL],
+          queue: process.env.RMQ_QUEUE,
           queueOptions: {
             durable: true,
           },

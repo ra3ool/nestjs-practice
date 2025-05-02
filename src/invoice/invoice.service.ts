@@ -173,7 +173,7 @@ export class InvoiceService {
         };
 
         // Publish the email task to RabbitMQ
-        this.rabbitMQClient.emit('daily_sales_report', report);
+        this.rabbitMQClient.emit(process.env.RMQ_QUEUE, report);
 
         this.logger.log(
           `✅ Email task added to queue for user ${user.customerId} (${user.email}).`,

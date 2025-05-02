@@ -24,6 +24,7 @@ describe('InvoiceController (Integration)', () => {
 
   const testUserData = {
     username: 'testuser',
+    email: 'test@email.com',
     password: 'hashedpassword',
   };
 

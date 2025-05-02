@@ -11,7 +11,7 @@ export class EmailConsumer {
 
   constructor(private readonly emailService: EmailService) {}
 
-  @EventPattern('daily_sales_report')
+  @EventPattern(process.env.RMQ_QUEUE)
   async handleDailySalesReport(
     @Payload() data: { email: string; subject: string; body: string },
     @Ctx() context: RmqContext,
