@@ -12,7 +12,9 @@ export class AuthController {
   }
 
   @Post('/signin')
-  signIn(@Body() dto: AuthCredentialsDto): Promise<AuthResponseDto> {
+  signIn(
+    @Body() dto: Omit<AuthCredentialsDto, 'email'>,
+  ): Promise<AuthResponseDto> {
     return this.authService.signIn(dto);
   }
 }

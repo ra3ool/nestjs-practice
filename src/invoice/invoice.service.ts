@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
@@ -94,10 +95,38 @@ export class InvoiceService {
   async generateDailySalesSummary(): Promise<void> {
     this.logger.log('Generating daily sales summary for all users...');
 
-    // Fetch all unique users from the invoices
-    const users = await this.invoiceModel.distinct('customer');
+    // Use aggregation to fetch distinct customers and their emails
+    const usersWithEmails = await this.invoiceModel.aggregate([
+      {
+        $group: {
+          _id: '$customer', // Group by customer ID
+        },
+      },
+      {
+        $addFields: {
+          _id: { $toObjectId: '$_id' }, // Convert _id to ObjectId if needed
+        },
+      },
+      {
+        $lookup: {
+          from: 'users', // Join with the 'users' collection
+          localField: '_id', // Match '_id' from the group (customer ID)
+          foreignField: '_id', // Match '_id' in the 'users' collection
+          as: 'userDetails', // Output the joined data in 'userDetails'
+        },
+      },
+      {
+        $unwind: '$userDetails', // Unwind the 'userDetails' array
+      },
+      {
+        $project: {
+          customerId: '$_id', // Include the customer ID
+          email: '$userDetails.email', // Include the user's email
+        },
+      },
+    ]);
 
-    for (const userId of users) {
+    for (const user of usersWithEmails) {
       try {
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
@@ -109,7 +138,7 @@ export class InvoiceService {
         const totalSales = await this.invoiceModel.aggregate([
           {
             $match: {
-              customer: userId,
+              customer: user.customerId,
               date: { $gte: startOfDay, $lte: endOfDay },
             },
           },
@@ -125,7 +154,7 @@ export class InvoiceService {
         const itemsSummary = await this.invoiceModel.aggregate([
           {
             $match: {
-              customer: userId,
+              customer: user.customerId,
               date: { $gte: startOfDay, $lte: endOfDay },
             },
           },
@@ -146,12 +175,9 @@ export class InvoiceService {
           itemsSummary,
         };
 
-        // Fetch the user's email (mocked here, replace with actual user fetching logic)
-        const userEmail = `user${userId}@example.com`; //TODO Replace with actual email fetching logic
-
-        // Send the email (replace the logger with actual email sending logic)
+        // Send the email
         await this.emailService.sendEmail(
-          userEmail,
+          user.email,
           'Daily Sales Summary',
           `Your daily sales summary:\n\nTotal Sales: ${report.totalSales}\nItems Summary: ${JSON.stringify(
             report.itemsSummary,
@@ -160,7 +186,10 @@ export class InvoiceService {
           )}`,
         );
       } catch (error) {
-        this.logger.error(`❌ Failed to process user ${userId}:`, error);
+        this.logger.error(
+          `❌ Failed to process user ${user.customerId}:`,
+          error,
+        );
       }
     }
   }

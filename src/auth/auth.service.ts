@@ -17,24 +17,42 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async signUp({ username, password }: AuthCredentialsDto): Promise<void> {
-    // Check if the username already exists
-    const existingUser = await this.userModel.findOne({ username }).exec();
+  async signUp({
+    username,
+    email,
+    password,
+  }: AuthCredentialsDto): Promise<void> {
+    // Check if the user already exists
+    const existingUser = await this.userModel
+      .findOne({
+        $or: [{ username }, { email }],
+      })
+      .exec();
+
     if (existingUser) {
-      throw new ConflictException('Username already exists');
+      if (existingUser.username === username) {
+        throw new ConflictException('Username already exists');
+      }
+      if (existingUser.email === email) {
+        throw new ConflictException('Email already exists');
+      }
     }
 
     // Hash the password and save the user to the database
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
-    const newUser = new this.userModel({ username, password: hashedPassword });
+    const newUser = new this.userModel({
+      username,
+      email,
+      password: hashedPassword,
+    });
     await newUser.save();
   }
 
   async signIn({
     username,
     password,
-  }: AuthCredentialsDto): Promise<{ accessToken: string }> {
+  }: Omit<AuthCredentialsDto, 'email'>): Promise<{ accessToken: string }> {
     const user = await this.userModel.findOne({ username }).exec();
     if (user && (await bcrypt.compare(password, user.password))) {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
