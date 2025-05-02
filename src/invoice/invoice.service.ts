@@ -1,4 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import {
+  /*Inject,*/
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Invoice } from './invoice.schema';
@@ -8,6 +15,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFilters } from './invoice.model';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { EmailService } from 'src/email/email.service';
+// import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class InvoiceService {
@@ -15,6 +24,8 @@ export class InvoiceService {
 
   constructor(
     @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
+    private readonly emailService: EmailService, // Inject EmailService
+    // @Inject('RABBITMQ_SERVICE') private readonly rabbitMQClient: ClientProxy,
   ) {}
 
   async getAllInvoices(
@@ -82,50 +93,76 @@ export class InvoiceService {
   // Cron job to run daily at 12:00 PM
   @Cron(CronExpression.EVERY_DAY_AT_NOON)
   async generateDailySalesSummary(): Promise<void> {
-    this.logger.log('Generating daily sales summary...');
+    this.logger.log('Generating daily sales summary for all users...');
 
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Fetch all unique users from the invoices
+    const users = await this.invoiceModel.distinct('customer');
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    for (const userId of users) {
+      try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
 
-    // Calculate total sales for the day
-    const totalSales = await this.invoiceModel.aggregate([
-      {
-        $match: {
-          date: { $gte: startOfDay, $lte: endOfDay },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: '$amount' },
-        },
-      },
-    ]);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
-    // Calculate total quantity sold per item (grouped by SKU)
-    const itemsSummary = await this.invoiceModel.aggregate([
-      {
-        $match: {
-          date: { $gte: startOfDay, $lte: endOfDay },
-        },
-      },
-      {
-        $unwind: '$items',
-      },
-      {
-        $group: {
-          _id: '$items.sku',
-          totalQuantity: { $sum: '$items.qt' },
-        },
-      },
-    ]);
+        // Calculate total sales for the day for the current user
+        const totalSales = await this.invoiceModel.aggregate([
+          {
+            $match: {
+              customer: userId,
+              date: { $gte: startOfDay, $lte: endOfDay },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: '$amount' },
+            },
+          },
+        ]);
 
-    // Log the summary (you can replace this with saving to a database or sending an email)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    this.logger.log(`Total Sales: ${totalSales[0]?.totalAmount || 0}`);
-    this.logger.log('Items Summary:', itemsSummary);
+        // Calculate total quantity sold per item (grouped by SKU) for the current user
+        const itemsSummary = await this.invoiceModel.aggregate([
+          {
+            $match: {
+              customer: userId,
+              date: { $gte: startOfDay, $lte: endOfDay },
+            },
+          },
+          {
+            $unwind: '$items',
+          },
+          {
+            $group: {
+              _id: '$items.sku',
+              totalQuantity: { $sum: '$items.qt' },
+            },
+          },
+        ]);
+
+        // Prepare the message payload
+        const report = {
+          totalSales: totalSales[0]?.totalAmount || 0,
+          itemsSummary,
+        };
+
+        // Fetch the user's email (mocked here, replace with actual user fetching logic)
+        const userEmail = `user${userId}@example.com`; // Replace with actual email fetching logic
+
+        // Send the email (replace the logger with actual email sending logic)
+        await this.emailService.sendEmail(
+          userEmail,
+          'Daily Sales Summary',
+          `Your daily sales summary:\n\nTotal Sales: ${report.totalSales}\nItems Summary: ${JSON.stringify(
+            report.itemsSummary,
+            null,
+            2,
+          )}`,
+        );
+      } catch (error) {
+        this.logger.error(`❌ Failed to process user ${userId}:`, error);
+      }
+    }
   }
 }
