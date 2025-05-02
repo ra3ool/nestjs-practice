@@ -1,12 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-  /*Inject,*/
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Invoice } from './invoice.schema';
@@ -16,8 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFilters } from './invoice.model';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { EmailService } from '../email/email.service';
-// import { ClientProxy } from '@nestjs/microservices';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class InvoiceService {
@@ -25,8 +18,7 @@ export class InvoiceService {
 
   constructor(
     @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
-    private readonly emailService: EmailService, // Inject EmailService
-    // @Inject('RABBITMQ_SERVICE') private readonly rabbitMQClient: ClientProxy,
+    @Inject('EMAIL_SERVICE') private readonly rabbitMQClient: ClientProxy,
   ) {}
 
   async getAllInvoices(
@@ -171,19 +163,20 @@ export class InvoiceService {
 
         // Prepare the message payload
         const report = {
-          totalSales: totalSales[0]?.totalAmount || 0,
-          itemsSummary,
-        };
-
-        // Send the email
-        await this.emailService.sendEmail(
-          user.email,
-          'Daily Sales Summary',
-          `Your daily sales summary:\n\nTotal Sales: ${report.totalSales}\nItems Summary: ${JSON.stringify(
-            report.itemsSummary,
+          email: user.email,
+          subject: 'Daily Sales Summary',
+          body: `Your daily sales summary:\n\nTotal Sales: ${totalSales[0]?.totalAmount || 0}\nItems Summary: ${JSON.stringify(
+            itemsSummary,
             null,
             2,
           )}`,
+        };
+
+        // Publish the email task to RabbitMQ
+        this.rabbitMQClient.emit('daily_sales_report', report);
+
+        this.logger.log(
+          `✅ Email task added to queue for user ${user.customerId} (${user.email}).`,
         );
       } catch (error) {
         this.logger.error(

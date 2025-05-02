@@ -5,7 +5,7 @@ import { InvoiceModule } from './invoice/invoice.module';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
-// import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
@@ -17,19 +17,19 @@ import { EmailModule } from './email/email.module';
     InvoiceModule,
     AuthModule,
     EmailModule,
-    // ClientsModule.register([ //TODO
-    //   {
-    //     name: 'RABBITMQ_SERVICE',
-    //     transport: Transport.RMQ,
-    //     options: {
-    //       urls: ['amqp://localhost:5672'], // RabbitMQ URL
-    //       queue: 'daily_sales_report',
-    //       queueOptions: {
-    //         durable: true,
-    //       },
-    //     },
-    //   },
-    // ]),
+    ClientsModule.register([
+      {
+        name: 'EMAIL_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: ['amqp://localhost:5672'], // RabbitMQ URL
+          queue: 'daily_sales_report', // Queue name
+          queueOptions: {
+            durable: true,
+          },
+        },
+      },
+    ]),
   ],
 })
 export class AppModule {}
