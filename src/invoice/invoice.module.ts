@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
 import { Invoice, InvoiceSchema } from './invoice.schema';
-import { EmailModule } from 'src/email/email.module';
+import { EmailModule } from '../email/email.module';
 // import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
@@ -25,7 +25,6 @@ import { EmailModule } from 'src/email/email.module';
     // ]),
   ],
   controllers: [InvoiceController],
-
   providers: [InvoiceService],
 })
 export class InvoiceModule {}

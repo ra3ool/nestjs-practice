@@ -1,4 +1,4 @@
-import { Module, ModuleMetadata } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { InvoiceModule } from './invoice/invoice.module';
@@ -8,7 +8,7 @@ import { EmailModule } from './email/email.module';
 // import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
-  imports: <ModuleMetadata['imports']>[
+  imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),

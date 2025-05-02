@@ -15,7 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFilters } from './invoice.model';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { EmailService } from 'src/email/email.service';
+import { EmailService } from '../email/email.service';
 // import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
@@ -85,7 +85,6 @@ export class InvoiceService {
       items,
       reference: uuidv4(), // Generate a unique reference ID
       customer: user.id,
-      date: new Date(), // Automatically set the date
     });
     return newInvoice.save();
   }
@@ -148,7 +147,7 @@ export class InvoiceService {
         };
 
         // Fetch the user's email (mocked here, replace with actual user fetching logic)
-        const userEmail = `user${userId}@example.com`; // Replace with actual email fetching logic
+        const userEmail = `user${userId}@example.com`; //TODO Replace with actual email fetching logic
 
         // Send the email (replace the logger with actual email sending logic)
         await this.emailService.sendEmail(

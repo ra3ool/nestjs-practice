@@ -12,7 +12,7 @@ export class Invoice extends Document {
   @Prop({ required: true })
   reference: string;
 
-  @Prop({ required: true })
+  @Prop({ default: Date.now })
   date: Date;
 
   @Prop({ type: [{ sku: String, qt: Number }] })
