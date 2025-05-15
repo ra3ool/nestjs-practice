@@ -5,7 +5,7 @@ import { InvoiceModule } from './invoice/invoice.module';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+// import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
@@ -17,19 +17,19 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
     InvoiceModule,
     AuthModule,
     EmailModule,
-    ClientsModule.register([
-      {
-        name: 'EMAIL_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RMQ_URL],
-          queue: process.env.RMQ_QUEUE,
-          queueOptions: {
-            durable: true,
-          },
-        },
-      },
-    ]),
+    // ClientsModule.register([
+    //   {
+    //     name: 'EMAIL_SERVICE',
+    //     transport: Transport.RMQ,
+    //     options: {
+    //       urls: [process.env.RMQ_URL],
+    //       queue: process.env.RMQ_QUEUE,
+    //       queueOptions: {
+    //         durable: true,
+    //       },
+    //     },
+    //   },
+    // ]),
   ],
 })
 export class AppModule {}

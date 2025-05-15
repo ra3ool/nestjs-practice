@@ -2,7 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+// import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   // Create the main HTTP application
@@ -18,16 +18,16 @@ async function bootstrap() {
   );
 
   // Create a microservice for RabbitMQ
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
-    options: {
-      urls: [process.env.RMQ_URL],
-      queue: process.env.RMQ_QUEUE,
-      queueOptions: {
-        durable: true,
-      },
-    },
-  });
+  // app.connectMicroservice<MicroserviceOptions>({
+  //   transport: Transport.RMQ,
+  //   options: {
+  //     urls: [process.env.RMQ_URL],
+  //     queue: process.env.RMQ_QUEUE,
+  //     queueOptions: {
+  //       durable: true,
+  //     },
+  //   },
+  // });
 
   // Start both the HTTP server and the microservice
   await app.startAllMicroservices();
