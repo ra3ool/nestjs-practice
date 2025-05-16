@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Invoice } from './invoice.entity';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
-import { Invoice, InvoiceSchema } from './invoice.schema';
 import { EmailModule } from '../email/email.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Invoice.name, schema: InvoiceSchema }]),
+    TypeOrmModule.forFeature([Invoice]),
     EmailModule,
     ClientsModule.register([
       {

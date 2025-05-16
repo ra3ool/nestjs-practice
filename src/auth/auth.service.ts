@@ -5,15 +5,16 @@ import {
 } from '@nestjs/common';
 import { AuthCredentialsDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User } from './user/user.schema'; // Updated to use the Mongoose schema
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user/user.entity';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private jwtService: JwtService,
   ) {}
 
@@ -22,41 +23,41 @@ export class AuthService {
     email,
     password,
   }: AuthCredentialsDto): Promise<void> {
-    // Check if the user already exists
-    const existingUser = await this.userModel
-      .findOne({
-        $or: [{ username }, { email }],
-      })
-      .exec();
+    // Check if the user already exists (by email or username)
+    const existingUser = await this.userRepository.findOne({
+      where: [{ email }, { username }],
+    });
 
     if (existingUser) {
-      if (existingUser.username === username) {
-        throw new ConflictException('Username already exists');
-      }
       if (existingUser.email === email) {
         throw new ConflictException('Email already exists');
+      }
+      if (existingUser.username === username) {
+        throw new ConflictException('Username already exists');
       }
     }
 
     // Hash the password and save the user to the database
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
-    const newUser = new this.userModel({
+    const newUser = this.userRepository.create({
       username,
       email,
       password: hashedPassword,
     });
-    await newUser.save();
+    await this.userRepository.save(newUser);
   }
 
   async signIn({
     username,
     password,
   }: Omit<AuthCredentialsDto, 'email'>): Promise<{ accessToken: string }> {
-    const user = await this.userModel.findOne({ username }).exec();
+    // Find by email (username is actually email)
+    const user = await this.userRepository.findOne({
+      where: { username },
+    });
     if (user && (await bcrypt.compare(password, user.password))) {
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
-      const payload = { id: String(user._id), username };
+      const payload = { id: String(user.id), username: user.email };
       const accessToken = await this.jwtService.signAsync(payload);
       return { accessToken };
     } else {
