@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { getEnv } from '../utils/env.util';
 
 @Injectable()
 export class EmailService {
@@ -11,19 +12,19 @@ export class EmailService {
   async sendEmail(to: string, subject: string, text: string): Promise<void> {
     try {
       const emailConfig = {
-        host: process.env.EMAIL_HOST,
-        port: Number(process.env.EMAIL_PORT),
-        secure: process.env.EMAIL_ENCRYPTION === 'ssl', // Use SSL if encryption is set to 'ssl'
+        host: getEnv('EMAIL_HOST'),
+        port: Number(getEnv('EMAIL_PORT')),
+        secure: getEnv('EMAIL_ENCRYPTION') === 'ssl',
         auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
+          user: getEnv('EMAIL_USER'),
+          pass: getEnv('EMAIL_PASS'),
         },
       };
       const transporter = nodemailer.createTransport(emailConfig);
 
       // Send the email
       await transporter.sendMail({
-        from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM}>`,
+        from: `"${getEnv('EMAIL_FROM_NAME')}" <${getEnv('EMAIL_FROM')}>`,
         to,
         subject,
         text,

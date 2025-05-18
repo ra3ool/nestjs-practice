@@ -4,6 +4,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { EmailService } from './email.service';
+import { getEnv } from 'src/utils/env.util';
 
 @Injectable()
 export class EmailConsumer {
@@ -11,7 +12,7 @@ export class EmailConsumer {
 
   constructor(private readonly emailService: EmailService) {}
 
-  @EventPattern(process.env.RMQ_QUEUE)
+  @EventPattern(getEnv('RMQ_QUEUE'))
   async handleDailySalesReport(
     @Payload() data: { email: string; subject: string; body: string },
     @Ctx() context: RmqContext,

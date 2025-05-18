@@ -10,11 +10,11 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
-import { Invoice } from './invoice.model';
+import { Invoice } from './invoice.entity';
 import { InvoiceDto } from './dto/invoice.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { GetUser } from '../auth/decorators/user.decorator';
-import { User } from '../auth/user/user.model';
+import { GetUser } from '../decorators/user.decorator';
+import { User } from '../auth/user/user.entity';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 
 @Controller('invoices')
