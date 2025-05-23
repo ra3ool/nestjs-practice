@@ -17,6 +17,32 @@ import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
 import { getEnv } from 'src/utils/env.util';
+import axios from 'axios';
+
+//create message for sending in telegram
+function getMessage(): string {
+  const now = new Date();
+
+  const persianDateString = now.toLocaleDateString('fa-IR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    calendar: 'persian',
+    timeZone: 'Asia/Tehran',
+    // numberingSystem: 'latn', // برای نمایش اعداد انگلیسی
+  });
+
+  const persianDayOfWeek = now.toLocaleDateString('fa-IR', {
+    weekday: 'long',
+    timeZone: 'Asia/Tehran',
+  });
+
+  const greetingText = `صبحت بخیر عزیز دلم. یه روز کاری دیگه رو پر قدرت استارت بزن
+امروز ${persianDayOfWeek} هست به تاریخ ${persianDateString}
+آرزو میکنم امروز حسابی بترکونی`;
+
+  return greetingText;
+}
 
 @Injectable()
 export class InvoiceService {
@@ -157,60 +183,18 @@ export class InvoiceService {
     });
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_NOON)
-  async generateDailySalesSummary(): Promise<void> {
-    this.logger.log('Generating daily sales summary for all users...');
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async generateDailyTelegramMessage(): Promise<void> {
+    const message = getMessage();
 
-    const users = await this.userRepository.find();
+    // Send message to Telegram
+    const telegramBotToken = getEnv('TELEGRAM_BOT_TOKEN');
+    const chatId = getEnv('TELEGRAM_CHAT_ID');
+    const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
 
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    for (const user of users) {
-      try {
-        const invoices = await this.invoiceRepository.find({
-          where: {
-            customer: { id: user.id },
-            date: Between(startOfDay, endOfDay),
-          },
-          relations: ['items'],
-        });
-
-        const totalAmount = invoices.reduce(
-          (sum, invoice) => sum + invoice.amount,
-          0,
-        );
-
-        const itemSummaryMap = new Map<string, number>();
-
-        invoices.forEach((invoice) => {
-          invoice.items.forEach(({ sku, qt }) => {
-            itemSummaryMap.set(sku, (itemSummaryMap.get(sku) || 0) + qt);
-          });
-        });
-
-        const itemsSummary = Array.from(itemSummaryMap.entries()).map(
-          ([sku, totalQuantity]) => ({ sku, totalQuantity }),
-        );
-
-        const report = {
-          email: user.email,
-          subject: 'Daily Sales Summary',
-          body: `Your daily sales summary:\n\nTotal Sales: ${totalAmount}\nItems Summary: ${JSON.stringify(
-            itemsSummary,
-            null,
-            2,
-          )}`,
-        };
-
-        this.rabbitMQClient.emit(getEnv('RMQ_QUEUE'), report);
-
-        this.logger.log(`✅ Email task added to queue for ${user.email}`);
-      } catch (error) {
-        this.logger.error(`❌ Failed to process user ${user.email}`, error);
-      }
-    }
+    await axios.post(telegramApiUrl, {
+      chat_id: chatId,
+      text: message,
+    });
   }
 }
