@@ -1,31 +1,34 @@
-// src/invoice/invoice.entity.ts
-
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   CreateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from '../auth/user/user.entity';
+import { InvoiceItem } from './invoice-item.entity';
 
-@Entity()
+@Entity('invoices')
 export class Invoice {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('float')
+  @Column('float', { nullable: false })
   amount: number;
 
-  @Column('json')
-  items: { sku: string; qt: number }[];
-
-  @Column()
+  @Column({ nullable: false })
   reference: string;
 
   @CreateDateColumn()
   date: Date;
 
-  @ManyToOne(() => User, (user) => user.invoices, { eager: false })
+  @ManyToOne(() => User, (user) => user.id, { eager: false })
   customer: User;
+
+  @OneToMany(() => InvoiceItem, (item) => item.invoice, {
+    cascade: true,
+    eager: false, // Avoid eager loading
+  })
+  items: InvoiceItem[];
 }

@@ -6,14 +6,17 @@ import {
   MoreThanOrEqual,
   LessThanOrEqual,
   FindOptionsWhere,
+  DataSource,
 } from 'typeorm';
 import { Invoice } from './invoice.entity';
-import { InvoiceDto } from './dto/invoice.dto';
+import { InvoiceItem } from './invoice-item.entity';
 import { User } from '../auth/user/user.entity';
+import { InvoiceDto, InvoiceItemsDto } from './dto/invoice.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
+import { getEnv } from 'src/utils/env.util';
 
 @Injectable()
 export class InvoiceService {
@@ -23,19 +26,24 @@ export class InvoiceService {
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
 
+    @InjectRepository(InvoiceItem)
+    private readonly invoiceItemRepository: Repository<InvoiceItem>,
+
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
 
     @Inject('EMAIL_SERVICE')
     private readonly rabbitMQClient: ClientProxy,
-  ) { }
+
+    private readonly dataSource: DataSource,
+  ) {}
 
   async getAllInvoices(
     user: User,
     filters?: InvoiceFiltersDto,
   ): Promise<Invoice[]> {
     // Use FindOptionsWhere<Invoice> for type safety
-    const where: FindOptionsWhere<Invoice> = { customer: user.id };
+    const where: FindOptionsWhere<Invoice> = { customer: { id: user.id } };
 
     if (filters) {
       if (filters.startDate || filters.endDate) {
@@ -56,14 +64,32 @@ export class InvoiceService {
 
     return this.invoiceRepository.find({
       where,
-      relations: ['customer'],
+      relations: ['customer', 'items'],
+      select: {
+        customer: {
+          id: true,
+          username: true,
+          email: true,
+        },
+      },
     });
   }
 
   async getInvoiceById(id: string, user: User): Promise<Invoice> {
+    // Validate ID
+    if (!id || isNaN(Number(id))) {
+      throw new NotFoundException(`Invoice with ID ${id} not found`);
+    }
     const invoice = await this.invoiceRepository.findOne({
       where: { id: Number(id), customer: { id: user.id } },
-      relations: ['customer'],
+      relations: ['customer', 'items'],
+      select: {
+        customer: {
+          id: true,
+          username: true,
+          email: true,
+        },
+      },
     });
 
     if (!invoice) {
@@ -74,16 +100,61 @@ export class InvoiceService {
   }
 
   async addInvoice(invoiceData: InvoiceDto, user: User): Promise<Invoice> {
-    const { amount, items } = invoiceData;
+    const { amount, items: incoiceItems } = invoiceData;
 
-    const invoice = this.invoiceRepository.create({
-      amount,
-      items,
-      reference: uuidv4(),
-      customer: user,
+    return this.dataSource.transaction(async (manager) => {
+      // Lock the user's invoices to prevent race conditions
+      const invoiceCount = await manager.getRepository(Invoice).count({
+        where: { customer: { id: user.id } },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (invoiceCount >= 30) {
+        throw new NotFoundException(
+          'You cannot add more than 50 invoices. Please delete an existing invoice to add a new one.',
+        );
+      }
+
+      if (!amount || amount <= 0) {
+        throw new NotFoundException('Invalid invoice amount');
+      }
+
+      // Create Invoice entity with cascading items
+      const invoice = manager.getRepository(Invoice).create({
+        amount,
+        reference: uuidv4(),
+        customer: user,
+        items: incoiceItems.map((item: InvoiceItemsDto) => ({
+          sku: item.sku,
+          qt: item.qt,
+        })),
+      });
+
+      // Save Invoice and related items in one operation
+      return manager.getRepository(Invoice).save(invoice);
     });
+  }
 
-    return this.invoiceRepository.save(invoice);
+  async deleteInvoice(id: string, user: User): Promise<{ message: string }> {
+    return this.dataSource.transaction(async (manager) => {
+      // Validate ID and lock the invoice row
+      const invoice = await manager.getRepository(Invoice).findOne({
+        where: { id: Number(id), customer: { id: user.id } },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!invoice) {
+        throw new NotFoundException(`Invoice with ID ${id} not found`);
+      }
+
+      await manager
+        .getRepository(Invoice)
+        .delete({ id: Number(id), customer: user });
+
+      return {
+        message: `Invoice with ID ${id} deleted successfully`,
+      };
+    });
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_NOON)
@@ -101,9 +172,10 @@ export class InvoiceService {
       try {
         const invoices = await this.invoiceRepository.find({
           where: {
-            customer: { id: Number(user.id) },
+            customer: { id: user.id },
             date: Between(startOfDay, endOfDay),
           },
+          relations: ['items'],
         });
 
         const totalAmount = invoices.reduce(
@@ -133,7 +205,7 @@ export class InvoiceService {
           )}`,
         };
 
-        this.rabbitMQClient.emit(process.env.RMQ_QUEUE, report);
+        this.rabbitMQClient.emit(getEnv('RMQ_QUEUE'), report);
 
         this.logger.log(`✅ Email task added to queue for ${user.email}`);
       } catch (error) {
