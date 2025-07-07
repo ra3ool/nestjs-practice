@@ -16,7 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
-import { getEnv } from 'src/utils/env.util';
+import { getEnv } from '../utils/env.util';
 import axios from 'axios';
 
 //create message for sending in telegram

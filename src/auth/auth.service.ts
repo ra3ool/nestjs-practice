@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { AuthCredentialsDto } from './dto/auth.dto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs'; // Updated to use bcryptjs
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user/user.entity';
@@ -38,7 +38,7 @@ export class AuthService {
     }
 
     // Hash the password and save the user to the database
-    const salt = await bcrypt.genSalt();
+    const salt = await bcrypt.genSaltSync(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     const newUser = this.userRepository.create({
       username,

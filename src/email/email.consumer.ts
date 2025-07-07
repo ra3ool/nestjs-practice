@@ -4,7 +4,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { EmailService } from './email.service';
-import { getEnv } from 'src/utils/env.util';
+import { getEnv } from '../utils/env.util';
 
 @Injectable()
 export class EmailConsumer {
