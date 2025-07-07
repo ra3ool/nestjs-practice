@@ -2,9 +2,10 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
-import { AuthCredentialsDto } from './dto/auth.dto';
-import * as bcrypt from 'bcryptjs'; // Updated to use bcryptjs
+import { SignUpDto, SignInDto, AuthResponseDto } from './dto/auth.dto';
+import * as bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user/user.entity';
@@ -12,56 +13,114 @@ import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
+  private readonly SALT_ROUNDS = 10;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private jwtService: JwtService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async signUp({
-    username,
-    email,
-    password,
-  }: AuthCredentialsDto): Promise<void> {
-    // Check if the user already exists (by email or username)
+  async signUp(signUpDto: SignUpDto): Promise<AuthResponseDto> {
+    try {
+      await this.checkUserExistence(signUpDto.username, signUpDto.email);
+
+      const hashedPassword = await this.hashPassword(signUpDto.password);
+      const newUser = await this.createUser({
+        ...signUpDto,
+        password: hashedPassword,
+      });
+
+      return this.generateAuthResponse(newUser);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create user');
+    }
+  }
+
+  async signIn(signInDto: SignInDto): Promise<AuthResponseDto> {
+    try {
+      const user = await this.findUserForSignIn(signInDto);
+
+      if (
+        !user ||
+        !(await this.validatePassword(signInDto.password, user.password))
+      ) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      return this.generateAuthResponse(user);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Login failed');
+    }
+  }
+
+  private async checkUserExistence(
+    username: string,
+    email: string,
+  ): Promise<void> {
     const existingUser = await this.userRepository.findOne({
       where: [{ email }, { username }],
     });
-
     if (existingUser) {
-      if (existingUser.email === email) {
-        throw new ConflictException('Email already exists');
-      }
-      if (existingUser.username === username) {
-        throw new ConflictException('Username already exists');
-      }
+      throw new ConflictException(
+        existingUser.email === email
+          ? 'Email already exists'
+          : 'Username already exists',
+      );
     }
-
-    // Hash the password and save the user to the database
-    const salt = await bcrypt.genSaltSync(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    const newUser = this.userRepository.create({
-      username,
-      email,
-      password: hashedPassword,
-    });
-    await this.userRepository.save(newUser);
   }
 
-  async signIn({
+  private async hashPassword(password: string): Promise<string> {
+    return await (
+      bcrypt as unknown as {
+        hash: (a: string, b: number) => Promise<string>;
+      }
+    ).hash(password, this.SALT_ROUNDS);
+  }
+
+  private async createUser(
+    userData: Omit<SignUpDto, 'password'> & { password: string },
+  ): Promise<User> {
+    const newUser = this.userRepository.create(userData);
+    return this.userRepository.save(newUser);
+  }
+
+  private async findUserForSignIn({
     username,
-    password,
-  }: Omit<AuthCredentialsDto, 'email'>): Promise<{ accessToken: string }> {
-    // Find by email (username is actually email)
-    const user = await this.userRepository.findOne({
-      where: { username },
+    email,
+  }: SignInDto): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: username ? { username } : { email },
     });
-    if (user && (await bcrypt.compare(password, user.password))) {
-      const payload = { id: String(user.id), username: user.email };
-      const accessToken = await this.jwtService.signAsync(payload);
-      return { accessToken };
-    } else {
-      throw new UnauthorizedException('Login failed');
-    }
+  }
+
+  private async validatePassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return await (
+      bcrypt as unknown as {
+        compare: (a: string, b: string) => Promise<boolean>;
+      }
+    ).compare(plainPassword, hashedPassword);
+  }
+
+  private async generateAuthResponse(user: User): Promise<AuthResponseDto> {
+    const { id, username, email } = user;
+    const accessToken = await this.jwtService.signAsync({
+      id,
+      username,
+      email,
+    });
+    return {
+      accessToken,
+      user: { id, username, email },
+    };
   }
 }
