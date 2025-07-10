@@ -1,17 +1,16 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
   Query,
   UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
-import { Invoice } from './invoice.entity';
-import { InvoiceDto } from './dto/invoice.dto';
+import { Invoice } from './entity/invoice.entity';
+import { InvoiceDto, InvoiceIdDto } from './dto/invoice.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../decorators/user.decorator';
 import { User } from '../auth/user/user.entity';
@@ -23,20 +22,25 @@ export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   @Get()
-  @UsePipes(new ValidationPipe({ transform: true }))
   getAllInvoices(
     @GetUser() user: User,
     @Query() filters: InvoiceFiltersDto,
-  ): Promise<Invoice[]> | null {
+  ): Promise<{
+    invoices: Invoice[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  }> {
     return this.invoiceService.getAllInvoices(user, filters);
   }
 
   @Get(':id')
   getInvoiceById(
-    @Param('id') id: string,
+    @Param() dto: InvoiceIdDto,
     @GetUser() user: User,
   ): Promise<Invoice> {
-    return this.invoiceService.getInvoiceById(id, user);
+    return this.invoiceService.getInvoiceById(dto, user);
   }
 
   @Post()
@@ -45,5 +49,13 @@ export class InvoiceController {
     @GetUser() user: User,
   ): Promise<Invoice> {
     return this.invoiceService.addInvoice(invoice, user);
+  }
+
+  @Delete(':id')
+  deleteInvoice(
+    @Param() dto: InvoiceIdDto,
+    @GetUser() user: User,
+  ): Promise<{ message: string }> {
+    return this.invoiceService.deleteInvoice(dto, user);
   }
 }

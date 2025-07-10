@@ -1,4 +1,8 @@
-import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Repository,
@@ -8,16 +12,15 @@ import {
   FindOptionsWhere,
   DataSource,
 } from 'typeorm';
-import { Invoice } from './invoice.entity';
-import { InvoiceItem } from './invoice-item.entity';
+import { Invoice } from './entity/invoice.entity';
 import { User } from '../auth/user/user.entity';
-import { InvoiceDto, InvoiceItemsDto } from './dto/invoice.dto';
+import { InvoiceDto, InvoiceIdDto, InvoiceItemsDto } from './dto/invoice.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ClientProxy } from '@nestjs/microservices';
 import { getEnv } from '../utils/env.util';
 import axios from 'axios';
+import { InvoiceQueryOptions } from './invoice.model';
 
 //create message for sending in telegram
 function getMessage(): string {
@@ -46,76 +49,77 @@ function getMessage(): string {
 
 @Injectable()
 export class InvoiceService {
-  private readonly logger = new Logger(InvoiceService.name);
-
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
-
-    @InjectRepository(InvoiceItem)
-    private readonly invoiceItemRepository: Repository<InvoiceItem>,
-
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-
-    @Inject('EMAIL_SERVICE')
-    private readonly rabbitMQClient: ClientProxy,
 
     private readonly dataSource: DataSource,
   ) {}
 
   async getAllInvoices(
     user: User,
-    filters?: InvoiceFiltersDto,
-  ): Promise<Invoice[]> {
-    // Use FindOptionsWhere<Invoice> for type safety
+    filters: InvoiceFiltersDto = {},
+    includeRelations: boolean = true,
+  ): Promise<{
+    invoices: Invoice[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  }> {
     const where: FindOptionsWhere<Invoice> = { customer: { id: user.id } };
 
-    if (filters) {
-      if (filters.startDate || filters.endDate) {
-        where.date = Between(
-          filters.startDate || new Date(0),
-          filters.endDate || new Date(),
-        );
-      }
-
-      if (filters.minAmount !== undefined && filters.maxAmount !== undefined) {
-        where.amount = Between(filters.minAmount, filters.maxAmount);
-      } else if (filters.minAmount !== undefined) {
-        where.amount = MoreThanOrEqual(filters.minAmount);
-      } else if (filters.maxAmount !== undefined) {
-        where.amount = LessThanOrEqual(filters.maxAmount);
-      }
+    if (filters.startDate || filters.endDate) {
+      where.date = Between(
+        filters.startDate ?? new Date(0),
+        filters.endDate ?? new Date(),
+      );
     }
 
-    return this.invoiceRepository.find({
+    if (filters.minAmount !== undefined) {
+      where.amount =
+        filters.maxAmount !== undefined
+          ? Between(filters.minAmount, filters.maxAmount)
+          : MoreThanOrEqual(filters.minAmount);
+    } else if (filters.maxAmount !== undefined) {
+      where.amount = LessThanOrEqual(filters.maxAmount);
+    }
+
+    const queryOptions: InvoiceQueryOptions = {
       where,
-      relations: ['customer', 'items'],
-      select: {
-        customer: {
-          id: true,
-          username: true,
-          email: true,
-        },
-      },
-    });
+      relations: includeRelations ? ['customer', 'items'] : [],
+      select: includeRelations
+        ? { customer: { id: true, username: true, email: true } }
+        : undefined,
+    };
+
+    if (filters.limit !== undefined || filters.page !== undefined) {
+      const limit = filters.limit ?? 10;
+      const page = filters.page ?? 1;
+      queryOptions.take = limit;
+      queryOptions.skip = (page - 1) * limit;
+
+      const [invoices, total] =
+        await this.invoiceRepository.findAndCount(queryOptions);
+      return {
+        invoices,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+
+    const invoices = await this.invoiceRepository.find(queryOptions);
+    return { invoices };
   }
 
-  async getInvoiceById(id: string, user: User): Promise<Invoice> {
-    // Validate ID
-    if (!id || isNaN(Number(id))) {
-      throw new NotFoundException(`Invoice with ID ${id} not found`);
-    }
+  async getInvoiceById(dto: InvoiceIdDto, user: User): Promise<Invoice> {
+    const { id } = dto;
     const invoice = await this.invoiceRepository.findOne({
-      where: { id: Number(id), customer: { id: user.id } },
+      where: { id, customer: { id: user.id } },
       relations: ['customer', 'items'],
-      select: {
-        customer: {
-          id: true,
-          username: true,
-          email: true,
-        },
-      },
+      select: { customer: { id: true, username: true, email: true } },
     });
 
     if (!invoice) {
@@ -126,7 +130,7 @@ export class InvoiceService {
   }
 
   async addInvoice(invoiceData: InvoiceDto, user: User): Promise<Invoice> {
-    const { amount, items: incoiceItems } = invoiceData;
+    const { amount, items: invoiceItems } = invoiceData;
 
     return this.dataSource.transaction(async (manager) => {
       // Lock the user's invoices to prevent race conditions
@@ -135,14 +139,14 @@ export class InvoiceService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      if (invoiceCount >= 30) {
-        throw new NotFoundException(
-          'You cannot add more than 50 invoices. Please delete an existing invoice to add a new one.',
+      if (invoiceCount >= 33) {
+        throw new BadRequestException(
+          'You cannot add more than 33 invoices. Please delete an existing invoice to add a new one.',
         );
       }
 
       if (!amount || amount <= 0) {
-        throw new NotFoundException('Invalid invoice amount');
+        throw new BadRequestException('Invalid invoice amount');
       }
 
       // Create Invoice entity with cascading items
@@ -150,7 +154,7 @@ export class InvoiceService {
         amount,
         reference: uuidv4(),
         customer: user,
-        items: incoiceItems.map((item: InvoiceItemsDto) => ({
+        items: invoiceItems.map((item: InvoiceItemsDto) => ({
           sku: item.sku,
           qt: item.qt,
         })),
@@ -161,26 +165,20 @@ export class InvoiceService {
     });
   }
 
-  async deleteInvoice(id: string, user: User): Promise<{ message: string }> {
-    return this.dataSource.transaction(async (manager) => {
-      // Validate ID and lock the invoice row
-      const invoice = await manager.getRepository(Invoice).findOne({
-        where: { id: Number(id), customer: { id: user.id } },
-        lock: { mode: 'pessimistic_write' },
-      });
-
-      if (!invoice) {
-        throw new NotFoundException(`Invoice with ID ${id} not found`);
-      }
-
-      await manager
+  async deleteInvoice(
+    dto: InvoiceIdDto,
+    user: User,
+  ): Promise<{ message: string }> {
+    const { id } = dto;
+    const result = await this.dataSource.transaction(async (manager) => {
+      return manager
         .getRepository(Invoice)
-        .delete({ id: Number(id), customer: user });
-
-      return {
-        message: `Invoice with ID ${id} deleted successfully`,
-      };
+        .delete({ id, customer: { id: user.id } });
     });
+    if (result.affected === 0) {
+      throw new NotFoundException(`Invoice with ID ${id} not found`);
+    }
+    return { message: `Invoice with ID ${id} deleted successfully` };
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM)

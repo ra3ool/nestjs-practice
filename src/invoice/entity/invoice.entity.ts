@@ -6,7 +6,7 @@ import {
   CreateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { User } from '../auth/user/user.entity';
+import { User } from '../../auth/user/user.entity';
 import { InvoiceItem } from './invoice-item.entity';
 
 @Entity('invoices')
