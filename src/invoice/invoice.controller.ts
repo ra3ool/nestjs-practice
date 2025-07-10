@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { Invoice } from './entity/invoice.entity';
@@ -15,9 +16,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../decorators/user.decorator';
 import { User } from '../auth/user/user.entity';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
+import { PaginationInterceptor } from 'src/interceptors/pagination.interceptor';
+import { InvoiceResponse } from './invoice.model';
 
 @Controller('invoices')
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(PaginationInterceptor)
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
@@ -25,13 +29,7 @@ export class InvoiceController {
   getAllInvoices(
     @GetUser() user: User,
     @Query() filters: InvoiceFiltersDto,
-  ): Promise<{
-    invoices: Invoice[];
-    total?: number;
-    page?: number;
-    limit?: number;
-    totalPages?: number;
-  }> {
+  ): Promise<InvoiceResponse> {
     return this.invoiceService.getAllInvoices(user, filters);
   }
 

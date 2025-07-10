@@ -2,6 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+// import { PaginationInterceptor } from './interceptors/pagination.interceptor';
 
 async function bootstrap() {
   // Create the main HTTP application
@@ -16,6 +17,7 @@ async function bootstrap() {
     }),
   );
   app.enableCors({ origin: true }); // allows all origins //TODO delete this in production
+  // app.useGlobalInterceptors(new PaginationInterceptor()); can use globally or just add to each module controller
 
   // Start both the HTTP server and the microservice
   await app.startAllMicroservices();

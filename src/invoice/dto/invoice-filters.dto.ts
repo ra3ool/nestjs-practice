@@ -15,11 +15,13 @@ export class InvoiceFiltersDto {
   @IsOptional()
   @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
   @IsNumber()
+  @Min(0)
   minAmount?: number;
 
   @IsOptional()
   @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
   @IsNumber()
+  @Min(0)
   maxAmount?: number;
 
   @IsOptional()

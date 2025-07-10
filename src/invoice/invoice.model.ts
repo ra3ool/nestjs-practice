@@ -20,3 +20,10 @@ export interface InvoiceQueryOptions {
   take?: number;
   skip?: number;
 }
+
+export interface InvoiceResponse {
+  invoices: InvoiceEntity[];
+  total?: number;
+  page?: number;
+  limit?: number;
+}

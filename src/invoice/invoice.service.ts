@@ -20,7 +20,7 @@ import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { getEnv } from '../utils/env.util';
 import axios from 'axios';
-import { InvoiceQueryOptions } from './invoice.model';
+import { InvoiceQueryOptions, InvoiceResponse } from './invoice.model';
 
 //create message for sending in telegram
 function getMessage(): string {
@@ -60,13 +60,7 @@ export class InvoiceService {
     user: User,
     filters: InvoiceFiltersDto = {},
     includeRelations: boolean = true,
-  ): Promise<{
-    invoices: Invoice[];
-    total?: number;
-    page?: number;
-    limit?: number;
-    totalPages?: number;
-  }> {
+  ): Promise<InvoiceResponse> {
     const where: FindOptionsWhere<Invoice> = { customer: { id: user.id } };
 
     if (filters.startDate || filters.endDate) {
@@ -101,13 +95,7 @@ export class InvoiceService {
 
       const [invoices, total] =
         await this.invoiceRepository.findAndCount(queryOptions);
-      return {
-        invoices,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      };
+      return { invoices, total, page, limit };
     }
 
     const invoices = await this.invoiceRepository.find(queryOptions);
