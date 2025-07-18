@@ -1,26 +1,31 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Invoice } from './entity/invoice.entity';
+import { InvoiceItem } from './entity/invoice-item.entity';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
-import { Invoice, InvoiceSchema } from './invoice.schema';
 import { EmailModule } from '../email/email.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { User } from '../auth/user/user.entity';
+import { getEnv } from '../utils/env.util';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Invoice.name, schema: InvoiceSchema }]),
+    TypeOrmModule.forFeature([Invoice, InvoiceItem, User]),
     EmailModule,
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'EMAIL_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RMQ_URL],
-          queue: process.env.RMQ_QUEUE,
-          queueOptions: {
-            durable: true,
+        useFactory: () => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [getEnv('RMQ_URL')],
+            queue: getEnv('RMQ_QUEUE'),
+            queueOptions: {
+              durable: true,
+            },
           },
-        },
+        }),
       },
     ]),
   ],

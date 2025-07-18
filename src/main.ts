@@ -2,7 +2,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+// import { PaginationInterceptor } from './interceptors/pagination.interceptor';
 
 async function bootstrap() {
   // Create the main HTTP application
@@ -16,18 +16,8 @@ async function bootstrap() {
       transform: true, // transforms payloads to match DTO classes
     }),
   );
-
-  // Create a microservice for RabbitMQ
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
-    options: {
-      urls: [process.env.RMQ_URL],
-      queue: process.env.RMQ_QUEUE,
-      queueOptions: {
-        durable: true,
-      },
-    },
-  });
+  app.enableCors({ origin: true }); // allows all origins //TODO delete this in production
+  // app.useGlobalInterceptors(new PaginationInterceptor()); can use globally or just add to each module controller
 
   // Start both the HTTP server and the microservice
   await app.startAllMicroservices();

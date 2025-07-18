@@ -1,3 +1,6 @@
+import { FindOptionsWhere } from 'typeorm';
+import { Invoice as InvoiceEntity } from './entity/invoice.entity';
+
 interface items {
   sku: string; //Stock Keeping Unit, unique identifier for the item
   qt: number; //Quantity of the item
@@ -10,8 +13,17 @@ export interface Invoice {
   items: items[]; //An array of items in the invoice
 }
 
-export interface InvoiceFilters {
-  customer: string; //Filter for invoices by customer name or identifier
-  date?: Date | { $gte?: Date; $lte?: Date }; //Filter for invoices by date, can be a single date or a range
-  amount?: number | { $gte?: number; $lte?: number }; //Filter for invoices by amount, can be a single value or a range
+export interface InvoiceQueryOptions {
+  where: FindOptionsWhere<InvoiceEntity>;
+  relations?: string[];
+  select?: { customer: { id: boolean; username: boolean; email: boolean } };
+  take?: number;
+  skip?: number;
+}
+
+export interface InvoiceResponse {
+  invoices: InvoiceEntity[];
+  total?: number;
+  page?: number;
+  limit?: number;
 }

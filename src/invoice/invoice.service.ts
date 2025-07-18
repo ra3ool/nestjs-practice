@@ -1,189 +1,186 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { Invoice } from './invoice.schema';
-import { InvoiceDto } from './dto/invoice.dto';
-import { User } from '../auth/user/user.model';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+  Repository,
+  Between,
+  MoreThanOrEqual,
+  LessThanOrEqual,
+  FindOptionsWhere,
+  DataSource,
+} from 'typeorm';
+import { Invoice } from './entity/invoice.entity';
+import { User } from '../auth/user/user.entity';
+import { InvoiceDto, InvoiceIdDto, InvoiceItemsDto } from './dto/invoice.dto';
 import { v4 as uuidv4 } from 'uuid';
-import { InvoiceFilters } from './invoice.model';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ClientProxy } from '@nestjs/microservices';
+import { getEnv } from '../utils/env.util';
+import axios from 'axios';
+import { InvoiceQueryOptions, InvoiceResponse } from './invoice.model';
+
+//create message for sending in telegram
+function getMessage(): string {
+  const now = new Date();
+
+  const persianDateString = now.toLocaleDateString('fa-IR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    calendar: 'persian',
+    timeZone: 'Asia/Tehran',
+    // numberingSystem: 'latn', // برای نمایش اعداد انگلیسی
+  });
+
+  const persianDayOfWeek = now.toLocaleDateString('fa-IR', {
+    weekday: 'long',
+    timeZone: 'Asia/Tehran',
+  });
+
+  const greetingText = `صبحت بخیر عزیز دلم. یه روز کاری دیگه رو پر قدرت استارت بزن
+امروز ${persianDayOfWeek} هست به تاریخ ${persianDateString}
+آرزو میکنم امروز حسابی بترکونی`;
+
+  return greetingText;
+}
 
 @Injectable()
 export class InvoiceService {
-  private readonly logger = new Logger(InvoiceService.name);
-
   constructor(
-    @InjectModel(Invoice.name) private readonly invoiceModel: Model<Invoice>,
-    @Inject('EMAIL_SERVICE') private readonly rabbitMQClient: ClientProxy,
+    @InjectRepository(Invoice)
+    private readonly invoiceRepository: Repository<Invoice>,
+
+    private readonly dataSource: DataSource,
   ) {}
 
   async getAllInvoices(
     user: User,
-    filters?: InvoiceFiltersDto,
-  ): Promise<Invoice[]> {
-    const query: InvoiceFilters = { customer: user.id };
+    filters: InvoiceFiltersDto = {},
+    includeRelations: boolean = true,
+  ): Promise<InvoiceResponse> {
+    const where: FindOptionsWhere<Invoice> = { customer: { id: user.id } };
 
-    if (filters) {
-      if (filters.startDate || filters.endDate) {
-        query.date = {};
-        if (filters.startDate) {
-          query.date.$gte = filters.startDate;
-        }
-        if (filters.endDate) {
-          query.date.$lte = filters.endDate;
-        }
-      }
-
-      if (filters.minAmount || filters.maxAmount) {
-        query.amount = {};
-        if (filters.minAmount) {
-          query.amount.$gte = filters.minAmount;
-        }
-        if (filters.maxAmount) {
-          query.amount.$lte = filters.maxAmount;
-        }
-      }
+    if (filters.startDate || filters.endDate) {
+      where.date = Between(
+        filters.startDate ?? new Date(0),
+        filters.endDate ?? new Date(),
+      );
     }
 
-    return this.invoiceModel.find(query).exec();
+    if (filters.minAmount !== undefined) {
+      where.amount =
+        filters.maxAmount !== undefined
+          ? Between(filters.minAmount, filters.maxAmount)
+          : MoreThanOrEqual(filters.minAmount);
+    } else if (filters.maxAmount !== undefined) {
+      where.amount = LessThanOrEqual(filters.maxAmount);
+    }
+
+    const queryOptions: InvoiceQueryOptions = {
+      where,
+      relations: includeRelations ? ['customer', 'items'] : [],
+      select: includeRelations
+        ? { customer: { id: true, username: true, email: true } }
+        : undefined,
+    };
+
+    if (filters.limit !== undefined || filters.page !== undefined) {
+      const limit = filters.limit ?? 10;
+      const page = filters.page ?? 1;
+      queryOptions.take = limit;
+      queryOptions.skip = (page - 1) * limit;
+
+      const [invoices, total] =
+        await this.invoiceRepository.findAndCount(queryOptions);
+      return { invoices, total, page, limit };
+    }
+
+    const invoices = await this.invoiceRepository.find(queryOptions);
+    return { invoices };
   }
 
-  async getInvoiceById(id: string, user: User): Promise<Invoice> {
-    // Validate if the provided id is a valid MongoDB ObjectId
-    if (!Types.ObjectId.isValid(id)) {
-      throw new NotFoundException(`Invalid ID format: ${id}`);
-    }
-
-    const invoice = await this.invoiceModel
-      .findOne({ _id: id, customer: user.id })
-      .exec();
+  async getInvoiceById(dto: InvoiceIdDto, user: User): Promise<Invoice> {
+    const { id } = dto;
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id, customer: { id: user.id } },
+      relations: ['customer', 'items'],
+      select: { customer: { id: true, username: true, email: true } },
+    });
 
     if (!invoice) {
-      throw new NotFoundException(
-        `Invoice with ID ${id} not found for user ${user.username}`,
-      );
+      throw new NotFoundException(`Invoice with ID ${id} not found`);
     }
 
     return invoice;
   }
 
   async addInvoice(invoiceData: InvoiceDto, user: User): Promise<Invoice> {
-    const { amount, items } = invoiceData;
-    const newInvoice = new this.invoiceModel({
-      amount,
-      items,
-      reference: uuidv4(), // Generate a unique reference ID
-      customer: user.id,
-    });
-    return newInvoice.save();
-  }
+    const { amount, items: invoiceItems } = invoiceData;
 
-  // Cron job to run daily at 12:00 PM
-  @Cron(CronExpression.EVERY_DAY_AT_NOON)
-  async generateDailySalesSummary(): Promise<void> {
-    this.logger.log('Generating daily sales summary for all users...');
+    return this.dataSource.transaction(async (manager) => {
+      // Lock the user's invoices to prevent race conditions
+      const invoiceCount = await manager.getRepository(Invoice).count({
+        where: { customer: { id: user.id } },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-    // Use aggregation to fetch distinct customers and their emails
-    const usersWithEmails = await this.invoiceModel.aggregate([
-      {
-        $group: {
-          _id: '$customer', // Group by customer ID
-        },
-      },
-      {
-        $addFields: {
-          _id: { $toObjectId: '$_id' }, // Convert _id to ObjectId if needed
-        },
-      },
-      {
-        $lookup: {
-          from: 'users', // Join with the 'users' collection
-          localField: '_id', // Match '_id' from the group (customer ID)
-          foreignField: '_id', // Match '_id' in the 'users' collection
-          as: 'userDetails', // Output the joined data in 'userDetails'
-        },
-      },
-      {
-        $unwind: '$userDetails', // Unwind the 'userDetails' array
-      },
-      {
-        $project: {
-          customerId: '$_id', // Include the customer ID
-          email: '$userDetails.email', // Include the user's email
-        },
-      },
-    ]);
-
-    for (const user of usersWithEmails) {
-      try {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
-
-        // Calculate total sales for the day for the current user
-        const totalSales = await this.invoiceModel.aggregate([
-          {
-            $match: {
-              customer: user.customerId,
-              date: { $gte: startOfDay, $lte: endOfDay },
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              totalAmount: { $sum: '$amount' },
-            },
-          },
-        ]);
-
-        // Calculate total quantity sold per item (grouped by SKU) for the current user
-        const itemsSummary = await this.invoiceModel.aggregate([
-          {
-            $match: {
-              customer: user.customerId,
-              date: { $gte: startOfDay, $lte: endOfDay },
-            },
-          },
-          {
-            $unwind: '$items',
-          },
-          {
-            $group: {
-              _id: '$items.sku',
-              totalQuantity: { $sum: '$items.qt' },
-            },
-          },
-        ]);
-
-        // Prepare the message payload
-        const report = {
-          email: user.email,
-          subject: 'Daily Sales Summary',
-          body: `Your daily sales summary:\n\nTotal Sales: ${totalSales[0]?.totalAmount || 0}\nItems Summary: ${JSON.stringify(
-            itemsSummary,
-            null,
-            2,
-          )}`,
-        };
-
-        // Publish the email task to RabbitMQ
-        this.rabbitMQClient.emit(process.env.RMQ_QUEUE, report);
-
-        this.logger.log(
-          `✅ Email task added to queue for user ${user.customerId} (${user.email}).`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `❌ Failed to process user ${user.customerId}:`,
-          error,
+      if (invoiceCount >= 33) {
+        throw new BadRequestException(
+          'You cannot add more than 33 invoices. Please delete an existing invoice to add a new one.',
         );
       }
+
+      if (!amount || amount <= 0) {
+        throw new BadRequestException('Invalid invoice amount');
+      }
+
+      // Create Invoice entity with cascading items
+      const invoice = manager.getRepository(Invoice).create({
+        amount,
+        reference: uuidv4(),
+        customer: user,
+        items: invoiceItems.map((item: InvoiceItemsDto) => ({
+          sku: item.sku,
+          qt: item.qt,
+        })),
+      });
+
+      // Save Invoice and related items in one operation
+      return manager.getRepository(Invoice).save(invoice);
+    });
+  }
+
+  async deleteInvoice(
+    dto: InvoiceIdDto,
+    user: User,
+  ): Promise<{ message: string }> {
+    const { id } = dto;
+    const result = await this.dataSource.transaction(async (manager) => {
+      return manager
+        .getRepository(Invoice)
+        .delete({ id, customer: { id: user.id } });
+    });
+    if (result.affected === 0) {
+      throw new NotFoundException(`Invoice with ID ${id} not found`);
     }
+    return { message: `Invoice with ID ${id} deleted successfully` };
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async generateDailyTelegramMessage(): Promise<void> {
+    const message = getMessage();
+
+    // Send message to Telegram
+    const telegramBotToken = getEnv('TELEGRAM_BOT_TOKEN');
+    const chatId = getEnv('TELEGRAM_CHAT_ID');
+    const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+
+    await axios.post(telegramApiUrl, {
+      chat_id: chatId,
+      text: message,
+    });
   }
 }

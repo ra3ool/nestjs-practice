@@ -2,65 +2,125 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
-import { AuthCredentialsDto } from './dto/auth.dto';
-import * as bcrypt from 'bcrypt';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User } from './user/user.schema'; // Updated to use the Mongoose schema
+import { SignUpDto, SignInDto, AuthResponseDto } from './dto/auth.dto';
+import * as bcrypt from 'bcryptjs';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './user/user.entity';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
+  private readonly SALT_ROUNDS = 10;
+
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
-    private jwtService: JwtService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async signUp({
-    username,
-    email,
-    password,
-  }: AuthCredentialsDto): Promise<void> {
-    // Check if the user already exists
-    const existingUser = await this.userModel
-      .findOne({
-        $or: [{ username }, { email }],
-      })
-      .exec();
+  async signUp(signUpDto: SignUpDto): Promise<AuthResponseDto> {
+    try {
+      await this.checkUserExistence(signUpDto.username, signUpDto.email);
 
-    if (existingUser) {
-      if (existingUser.username === username) {
-        throw new ConflictException('Username already exists');
+      const hashedPassword = await this.hashPassword(signUpDto.password);
+      const newUser = await this.createUser({
+        ...signUpDto,
+        password: hashedPassword,
+      });
+
+      return this.generateAuthResponse(newUser);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
       }
-      if (existingUser.email === email) {
-        throw new ConflictException('Email already exists');
-      }
+      throw new InternalServerErrorException('Failed to create user');
     }
-
-    // Hash the password and save the user to the database
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
-    const newUser = new this.userModel({
-      username,
-      email,
-      password: hashedPassword,
-    });
-    await newUser.save();
   }
 
-  async signIn({
-    username,
-    password,
-  }: Omit<AuthCredentialsDto, 'email'>): Promise<{ accessToken: string }> {
-    const user = await this.userModel.findOne({ username }).exec();
-    if (user && (await bcrypt.compare(password, user.password))) {
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
-      const payload = { id: String(user._id), username };
-      const accessToken = await this.jwtService.signAsync(payload);
-      return { accessToken };
-    } else {
-      throw new UnauthorizedException('Login failed');
+  async signIn(signInDto: SignInDto): Promise<AuthResponseDto> {
+    try {
+      const user = await this.findUserForSignIn(signInDto);
+
+      if (
+        !user ||
+        !(await this.validatePassword(signInDto.password, user.password))
+      ) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      return this.generateAuthResponse(user);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Login failed');
     }
+  }
+
+  private async checkUserExistence(
+    username: string,
+    email: string,
+  ): Promise<void> {
+    const existingUser = await this.userRepository.findOne({
+      where: [{ email }, { username }],
+    });
+    if (existingUser) {
+      throw new ConflictException(
+        existingUser.email === email
+          ? 'Email already exists'
+          : 'Username already exists',
+      );
+    }
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    return await (
+      bcrypt as unknown as {
+        hash: (a: string, b: number) => Promise<string>;
+      }
+    ).hash(password, this.SALT_ROUNDS);
+  }
+
+  private async createUser(
+    userData: Omit<SignUpDto, 'password'> & { password: string },
+  ): Promise<User> {
+    const newUser = this.userRepository.create(userData);
+    return this.userRepository.save(newUser);
+  }
+
+  private async findUserForSignIn({
+    username,
+    email,
+  }: SignInDto): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: username ? { username } : { email },
+    });
+  }
+
+  private async validatePassword(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return await (
+      bcrypt as unknown as {
+        compare: (a: string, b: string) => Promise<boolean>;
+      }
+    ).compare(plainPassword, hashedPassword);
+  }
+
+  private async generateAuthResponse(user: User): Promise<AuthResponseDto> {
+    const { id, username, email } = user;
+    const accessToken = await this.jwtService.signAsync({
+      id,
+      username,
+      email,
+    });
+    return {
+      accessToken,
+      user: { id, username, email },
+    };
   }
 }

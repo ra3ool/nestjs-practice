@@ -5,7 +5,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class InvoiceDto {
   @IsNumber()
@@ -16,6 +16,12 @@ export class InvoiceDto {
   @ValidateNested({ each: true })
   @Type(() => InvoiceItemsDto)
   items: InvoiceItemsDto[];
+}
+
+export class InvoiceIdDto {
+  @Transform(({ value }) => Number(value))
+  @IsNumber()
+  id: number;
 }
 
 export class InvoiceItemsDto {

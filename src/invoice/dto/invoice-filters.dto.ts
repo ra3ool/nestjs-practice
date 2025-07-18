@@ -1,4 +1,4 @@
-import { IsOptional, IsDate, IsNumber } from 'class-validator';
+import { IsOptional, IsDate, IsNumber, Min } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class InvoiceFiltersDto {
@@ -15,10 +15,24 @@ export class InvoiceFiltersDto {
   @IsOptional()
   @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
   @IsNumber()
+  @Min(0)
   minAmount?: number;
 
   @IsOptional()
   @Transform(({ value }) => (value !== undefined ? Number(value) : undefined))
   @IsNumber()
+  @Min(0)
   maxAmount?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined ? Number(value) : 1))
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Transform(({ value }) => (value !== undefined ? Number(value) : 10))
+  @IsNumber()
+  @Min(1)
+  limit?: number = 10;
 }

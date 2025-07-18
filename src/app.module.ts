@@ -1,35 +1,31 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { InvoiceModule } from './invoice/invoice.module';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import { getEnv } from './utils/env.util';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    MongooseModule.forRoot('mongodb://localhost:27017/payever'), // MongoDB connection string
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: getEnv('DB_HOST'),
+      port: parseInt(getEnv('DB_PORT', '3306')),
+      username: getEnv('DB_USERNAME'),
+      password: getEnv('DB_PASSWORD'),
+      database: getEnv('DB_NAME'),
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: true,
+    }),
     ScheduleModule.forRoot(),
     InvoiceModule,
     AuthModule,
     EmailModule,
-    ClientsModule.register([
-      {
-        name: 'EMAIL_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RMQ_URL],
-          queue: process.env.RMQ_QUEUE,
-          queueOptions: {
-            durable: true,
-          },
-        },
-      },
-    ]),
   ],
 })
 export class AppModule {}

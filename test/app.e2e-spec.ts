@@ -10,7 +10,7 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { InvoiceDto } from '../src/invoice/dto/invoice.dto';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '../src/auth/user/user.schema';
+import { User } from '../src/auth/user/user.entity';
 import { Model } from 'mongoose';
 import { getModelToken } from '@nestjs/mongoose';
 

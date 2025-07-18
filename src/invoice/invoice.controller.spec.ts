@@ -11,7 +11,7 @@ describe('InvoiceController', () => {
   let service: jest.Mocked<InvoiceService>;
 
   const mockUser: User = {
-    id: '1',
+    id: 1,
     username: 'testuser',
     email: 'test@email.com',
     password: 'hashedpassword',
