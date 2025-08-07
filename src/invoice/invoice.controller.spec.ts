@@ -14,6 +14,7 @@ describe('InvoiceController', () => {
     id: 1,
     username: 'testuser',
     email: 'test@email.com',
+    role: 'guest',
     password: 'hashedpassword',
   };
 
