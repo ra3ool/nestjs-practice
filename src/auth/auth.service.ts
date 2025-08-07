@@ -112,15 +112,16 @@ export class AuthService {
   }
 
   private async generateAuthResponse(user: User): Promise<AuthResponseDto> {
-    const { id, username, email } = user;
+    const { id, username, email, role = 'guest' } = user;
     const accessToken = await this.jwtService.signAsync({
       id,
       username,
       email,
+      role,
     });
     return {
       accessToken,
-      user: { id, username, email },
+      user: { id, username, email, role },
     };
   }
 }
