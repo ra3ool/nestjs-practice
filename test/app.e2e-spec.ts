@@ -1,18 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-base-to-string */
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { getModelToken } from '@nestjs/mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Model } from 'mongoose';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { InvoiceDto } from '../src/invoice/dto/invoice.dto';
-import { JwtService } from '@nestjs/jwt';
 import { User } from '../src/auth/user/user.entity';
-import { Model } from 'mongoose';
-import { getModelToken } from '@nestjs/mongoose';
+import { InvoiceDto } from '../src/invoice/dto/invoice.dto';
 
 describe('InvoiceController (Integration)', () => {
   let app: INestApplication;
@@ -51,7 +45,6 @@ describe('InvoiceController (Integration)', () => {
     jwtService = moduleFixture.get<JwtService>(JwtService);
     userModel = moduleFixture.get<Model<User>>(getModelToken(User.name));
 
-    // Create a test user and generate a JWT token
     const testUser = new userModel(testUserData);
     await testUser.save();
     accessToken = jwtService.sign({
@@ -97,7 +90,7 @@ describe('InvoiceController (Integration)', () => {
     });
 
     it('should return 404 if the invoice does not exist', async () => {
-      const nonExistentId = '644f1c2e5f1b2c0012345678'; // Valid ObjectId format but non-existent
+      const nonExistentId = '644f1c2e5f1b2c0012345678';
       await makeRequest('get', `/invoices/${nonExistentId}`).expect(404);
     });
   });
@@ -113,7 +106,7 @@ describe('InvoiceController (Integration)', () => {
   describe('GET /invoices with filters', () => {
     it('should filter invoices by date range', async () => {
       const response = await makeRequest('get', '/invoices')
-        .query({ startDate: '2025-04-01', endDate: '2025-04-30' }) //out of range date inserted for testing
+        .query({ startDate: '2025-04-01', endDate: '2025-04-30' })
         .expect(200);
       expect(response.body).toEqual([]);
     });

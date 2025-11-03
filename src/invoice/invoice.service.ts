@@ -3,26 +3,25 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  Between,
-  MoreThanOrEqual,
-  LessThanOrEqual,
-  FindOptionsWhere,
-  DataSource,
-} from 'typeorm';
-import { Invoice } from './entity/invoice.entity';
-import { User } from '../auth/user/user.entity';
-import { InvoiceDto, InvoiceIdDto, InvoiceItemsDto } from './dto/invoice.dto';
-import { v4 as uuidv4 } from 'uuid';
-import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { getEnv } from '../utils/env.util';
+import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
+import {
+  Between,
+  DataSource,
+  FindOptionsWhere,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { User } from '../auth/user/user.entity';
+import { getEnv } from '../utils/env.util';
+import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
+import { InvoiceDto, InvoiceIdDto, InvoiceItemsDto } from './dto/invoice.dto';
+import { Invoice } from './entity/invoice.entity';
 import { InvoiceQueryOptions, InvoiceResponse } from './invoice.model';
 
-//create message for sending in telegram
 function getMessage(): string {
   const now = new Date();
 
@@ -32,7 +31,7 @@ function getMessage(): string {
     day: '2-digit',
     calendar: 'persian',
     timeZone: 'Asia/Tehran',
-    // numberingSystem: 'latn', // برای نمایش اعداد انگلیسی
+    // numberingSystem: 'latn', // for showing english digits
   });
 
   const persianDayOfWeek = now.toLocaleDateString('fa-IR', {
@@ -121,7 +120,6 @@ export class InvoiceService {
     const { amount, items: invoiceItems } = invoiceData;
 
     return this.dataSource.transaction(async (manager) => {
-      // Lock the user's invoices to prevent race conditions
       const invoiceCount = await manager.getRepository(Invoice).count({
         where: { customer: { id: user.id } },
         lock: { mode: 'pessimistic_write' },
@@ -137,7 +135,6 @@ export class InvoiceService {
         throw new BadRequestException('Invalid invoice amount');
       }
 
-      // Create Invoice entity with cascading items
       const invoice = manager.getRepository(Invoice).create({
         amount,
         reference: uuidv4(),
@@ -148,7 +145,6 @@ export class InvoiceService {
         })),
       });
 
-      // Save Invoice and related items in one operation
       return manager.getRepository(Invoice).save(invoice);
     });
   }
@@ -173,7 +169,6 @@ export class InvoiceService {
   async generateDailyTelegramMessage(): Promise<void> {
     const message = getMessage();
 
-    // Send message to Telegram
     const telegramBotToken = getEnv('TELEGRAM_BOT_TOKEN');
     const chatId = getEnv('TELEGRAM_CHAT_ID');
     const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;

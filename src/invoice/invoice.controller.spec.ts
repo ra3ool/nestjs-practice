@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
-import { InvoiceController } from './invoice.controller';
-import { InvoiceService } from './invoice.service';
-import { InvoiceDto } from './dto/invoice.dto';
 import { User } from '../auth/user/user.model';
 import { InvoiceFiltersDto } from './dto/invoice-filters.dto';
+import { InvoiceDto } from './dto/invoice.dto';
+import { InvoiceController } from './invoice.controller';
+import { InvoiceService } from './invoice.service';
 
 describe('InvoiceController', () => {
   let controller: InvoiceController;
@@ -58,16 +57,16 @@ describe('InvoiceController', () => {
 
   describe('getAllInvoices', () => {
     it('should return all invoices for the user', async () => {
-      const result = await controller.getAllInvoices(mockUser, undefined); // Include `undefined` for filters
+      const result = await controller.getAllInvoices(mockUser, undefined);
       expect(result).toEqual([mockInvoice]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined); // Include `undefined` for filters
+      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined);
     });
 
     it('should handle empty invoices', async () => {
       service.getAllInvoices.mockResolvedValueOnce([]);
-      const result = await controller.getAllInvoices(mockUser, undefined); // Include `undefined` for filters
+      const result = await controller.getAllInvoices(mockUser, undefined);
       expect(result).toEqual([]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined); // Include `undefined` for filters
+      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined);
     });
   });
 

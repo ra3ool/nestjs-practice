@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { getEnv } from '../utils/env.util';
@@ -22,7 +19,6 @@ export class EmailService {
       };
       const transporter = nodemailer.createTransport(emailConfig);
 
-      // Send the email
       await transporter.sendMail({
         from: `"${getEnv('EMAIL_FROM_NAME')}" <${getEnv('EMAIL_FROM')}>`,
         to,

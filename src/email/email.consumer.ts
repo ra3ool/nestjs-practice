@@ -1,10 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
-import { EmailService } from './email.service';
 import { getEnv } from '../utils/env.util';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class EmailConsumer {
@@ -23,14 +20,13 @@ export class EmailConsumer {
     try {
       this.logger.log(`📧 Received email task for: ${data.email}`);
 
-      // Send the email
       await this.emailService.sendEmail(data.email, data.subject, data.body);
 
       this.logger.log(`✅ Email sent to: ${data.email}`);
-      channel.ack(originalMessage); // Acknowledge the message
+      channel.ack(originalMessage);
     } catch (error) {
       this.logger.error(`❌ Failed to send email to: ${data.email}`, error);
-      channel.nack(originalMessage); // Reject the message
+      channel.nack(originalMessage);
     }
   }
 }

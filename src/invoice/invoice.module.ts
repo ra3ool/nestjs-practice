@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Invoice } from './entity/invoice.entity';
+import { User } from '../auth/user/user.entity';
+import { EmailModule } from '../email/email.module';
+import { getEnv } from '../utils/env.util';
 import { InvoiceItem } from './entity/invoice-item.entity';
+import { Invoice } from './entity/invoice.entity';
 import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
-import { EmailModule } from '../email/email.module';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { User } from '../auth/user/user.entity';
-import { getEnv } from '../utils/env.util';
 
 @Module({
   imports: [

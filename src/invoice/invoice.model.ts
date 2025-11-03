@@ -2,15 +2,15 @@ import { FindOptionsWhere } from 'typeorm';
 import { Invoice as InvoiceEntity } from './entity/invoice.entity';
 
 interface items {
-  sku: string; //Stock Keeping Unit, unique identifier for the item
-  qt: number; //Quantity of the item
+  sku: string;
+  qt: number;
 }
 export interface Invoice {
-  customer: string; //The name or identifier of the customer
-  amount: number; //The total amount of the invoice
-  reference: string; //A reference code for the invoice
-  date: Date; //The date the invoice was created
-  items: items[]; //An array of items in the invoice
+  customer: string;
+  amount: number;
+  reference: string;
+  date: Date;
+  items: items[];
 }
 
 export interface InvoiceQueryOptions {
