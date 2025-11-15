@@ -59,14 +59,18 @@ describe('InvoiceController', () => {
     it('should return all invoices for the user', async () => {
       const result = await controller.getAllInvoices(mockUser, undefined);
       expect(result).toEqual([mockInvoice]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined);
+      expect(() =>
+        service.getAllInvoices(mockUser, undefined),
+      ).toHaveBeenCalledWith(mockUser, undefined);
     });
 
     it('should handle empty invoices', async () => {
       service.getAllInvoices.mockResolvedValueOnce([]);
       const result = await controller.getAllInvoices(mockUser, undefined);
       expect(result).toEqual([]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, undefined);
+      expect(() =>
+        service.getAllInvoices(mockUser, undefined),
+      ).toHaveBeenCalledWith(mockUser, undefined);
     });
   });
 
@@ -78,14 +82,18 @@ describe('InvoiceController', () => {
       };
       const result = await controller.getAllInvoices(mockUser, filters);
       expect(result).toEqual([mockInvoice]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, filters);
+      expect(() =>
+        service.getAllInvoices(mockUser, filters),
+      ).toHaveBeenCalledWith(mockUser, filters);
     });
 
     it('should filter invoices by amount range', async () => {
       const filters = { minAmount: 50, maxAmount: 150 };
       const result = await controller.getAllInvoices(mockUser, filters);
       expect(result).toEqual([mockInvoice]);
-      expect(service.getAllInvoices).toHaveBeenCalledWith(mockUser, filters);
+      expect(() =>
+        service.getAllInvoices(mockUser, filters),
+      ).toHaveBeenCalledWith(mockUser, filters);
     });
   });
 
@@ -93,7 +101,9 @@ describe('InvoiceController', () => {
     it('should return a single invoice by ID', async () => {
       const result = await controller.getInvoiceById('12345', mockUser);
       expect(result).toEqual(mockInvoice);
-      expect(service.getInvoiceById).toHaveBeenCalledWith('12345', mockUser);
+      expect(() =>
+        service.getInvoiceById('12345', mockUser),
+      ).toHaveBeenCalledWith('12345', mockUser);
     });
 
     it('should handle non-existent invoice', async () => {
@@ -110,7 +120,9 @@ describe('InvoiceController', () => {
     it('should create a new invoice', async () => {
       const result = await controller.addInvoice(mockInvoiceDto, mockUser);
       expect(result).toEqual(mockInvoice);
-      expect(service.addInvoice).toHaveBeenCalledWith(mockInvoiceDto, mockUser);
+      expect(() =>
+        service.addInvoice(mockInvoiceDto, mockUser),
+      ).toHaveBeenCalledWith(mockInvoiceDto, mockUser);
     });
 
     it('should handle errors during invoice creation', async () => {

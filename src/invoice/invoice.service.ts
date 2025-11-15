@@ -169,8 +169,8 @@ export class InvoiceService {
   async generateDailyTelegramMessage(): Promise<void> {
     const message = getMessage();
 
-    const telegramBotToken = getEnv('TELEGRAM_BOT_TOKEN');
-    const chatId = getEnv('TELEGRAM_CHAT_ID');
+    const telegramBotToken = getEnv('TELEGRAM_BOT_TOKEN') as string;
+    const chatId = getEnv('TELEGRAM_CHAT_ID') as string;
     const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
 
     await axios.post(telegramApiUrl, {
