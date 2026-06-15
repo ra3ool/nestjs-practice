@@ -1,11 +1,11 @@
+import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
   IsNumber,
   IsPositive,
-  IsArray,
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
 
 export class InvoiceDto {
   @IsNumber()

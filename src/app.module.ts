@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { InvoiceModule } from './invoice/invoice.module';
-import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
 import { EmailModule } from './email/email.module';
+import { InvoiceModule } from './invoice/invoice.module';
 import { getEnv } from './utils/env.util';
 
 @Module({

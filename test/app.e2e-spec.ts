@@ -1,25 +1,19 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-base-to-string */
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { getModelToken } from '@nestjs/mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Model, Document } from 'mongoose';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { InvoiceDto } from '../src/invoice/dto/invoice.dto';
-import { JwtService } from '@nestjs/jwt';
 import { User } from '../src/auth/user/user.entity';
-import { Model } from 'mongoose';
-import { getModelToken } from '@nestjs/mongoose';
+import { InvoiceDto } from '../src/invoice/dto/invoice.dto';
 
 describe('InvoiceController (Integration)', () => {
   let app: INestApplication;
   let jwtService: JwtService;
-  let userModel: Model<User>;
+  let userModel: Model<User & Document>;
   let accessToken: string;
-  let createdInvoice: InvoiceDto;
+  let createdInvoice: InvoiceDto & { _id: string };
   let createdInvoiceId: string;
 
   const testUserData = {
@@ -33,7 +27,11 @@ describe('InvoiceController (Integration)', () => {
     items: [{ sku: 'item1', qt: 2 }],
   };
 
-  const makeRequest = (method: string, url: string, body?: any) => {
+  const makeRequest = (
+    method: 'get' | 'post' | 'put' | 'delete',
+    url: string,
+    body?: object,
+  ): request.Test => {
     const req = request(app.getHttpServer())
       [method](url)
       .set('Authorization', `Bearer ${accessToken}`);
@@ -45,13 +43,14 @@ describe('InvoiceController (Integration)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication() as INestApplication;
     await app.init();
 
     jwtService = moduleFixture.get<JwtService>(JwtService);
-    userModel = moduleFixture.get<Model<User>>(getModelToken(User.name));
+    userModel = moduleFixture.get<Model<User & Document>>(
+      getModelToken(User.name),
+    );
 
-    // Create a test user and generate a JWT token
     const testUser = new userModel(testUserData);
     await testUser.save();
     accessToken = jwtService.sign({
@@ -80,8 +79,8 @@ describe('InvoiceController (Integration)', () => {
         testInvoiceData,
       ).expect(201);
 
-      createdInvoice = response.body;
-      createdInvoiceId = response.body._id;
+      createdInvoice = response.body as InvoiceDto & { _id: string };
+      createdInvoiceId = createdInvoice._id;
 
       expect(response.body).toMatchObject(testInvoiceData);
     });
@@ -97,7 +96,7 @@ describe('InvoiceController (Integration)', () => {
     });
 
     it('should return 404 if the invoice does not exist', async () => {
-      const nonExistentId = '644f1c2e5f1b2c0012345678'; // Valid ObjectId format but non-existent
+      const nonExistentId = '644f1c2e5f1b2c0012345678';
       await makeRequest('get', `/invoices/${nonExistentId}`).expect(404);
     });
   });
@@ -105,7 +104,7 @@ describe('InvoiceController (Integration)', () => {
   describe('GET /invoices', () => {
     it('should return the created invoice', async () => {
       const response = await makeRequest('get', '/invoices').expect(200);
-      const firstInvoice = response.body[0];
+      const firstInvoice = response.body[0] as InvoiceDto & { _id: string };
       expect(firstInvoice).toMatchObject(createdInvoice);
     });
   });
@@ -113,7 +112,7 @@ describe('InvoiceController (Integration)', () => {
   describe('GET /invoices with filters', () => {
     it('should filter invoices by date range', async () => {
       const response = await makeRequest('get', '/invoices')
-        .query({ startDate: '2025-04-01', endDate: '2025-04-30' }) //out of range date inserted for testing
+        .query({ startDate: '2025-04-01', endDate: '2025-04-30' })
         .expect(200);
       expect(response.body).toEqual([]);
     });

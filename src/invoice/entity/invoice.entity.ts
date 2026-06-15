@@ -1,10 +1,10 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
   CreateDateColumn,
+  Entity,
+  ManyToOne,
   OneToMany,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../../auth/user/user.entity';
 import { InvoiceItem } from './invoice-item.entity';
@@ -28,7 +28,7 @@ export class Invoice {
 
   @OneToMany(() => InvoiceItem, (item) => item.invoice, {
     cascade: true,
-    eager: false, // Avoid eager loading
+    eager: false,
   })
   items: InvoiceItem[];
 }

@@ -1,16 +1,16 @@
 import {
-  IsString,
-  MinLength,
-  MaxLength,
-  Matches,
-  IsEmail,
-  IsOptional,
-  ValidateIf,
   IsBoolean,
+  IsEmail,
   IsNotEmptyObject,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  ValidateIf,
 } from 'class-validator';
-import { User } from '../user/user.model';
 import { IsTermsAccepted } from 'src/validators/check-terms.decorator';
+import { User } from '../user/user.model';
 
 interface checkT {
   email?: string;
@@ -45,13 +45,13 @@ export class SignInDto {
   @IsString()
   @MinLength(4)
   @MaxLength(20)
-  @ValidateIf((o: checkT) => !o.email && !!o.username) // Only validate if email is not provided
+  @ValidateIf((o: checkT) => !o.email && !!o.username)
   username?: string;
 
   @IsOptional()
   @IsString()
   @IsEmail({}, { message: 'Invalid email format' })
-  @ValidateIf((o: checkT) => !o.username && !!o.email) // Only validate if username is not provided
+  @ValidateIf((o: checkT) => !o.username && !!o.email)
   email?: string;
 
   @IsString()
@@ -71,7 +71,7 @@ export class SignInDto {
     {},
     { message: 'Either username or email must be provided' },
   )
-  _dummy?: object; // Dummy field to trigger validation
+  _dummy?: object;
 }
 
 export interface AuthResponseDto {

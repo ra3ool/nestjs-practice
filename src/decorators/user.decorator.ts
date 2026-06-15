@@ -1,14 +1,12 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-// Define the shape of the user object (adjust based on your actual user structure)
 interface User {
   id: string;
   username: string;
   email: string;
-  role: string; // Add specific fields as needed
+  role: string;
 }
 
-// Extend the Request interface to include the user property
 interface AuthenticatedRequest extends Request {
   user?: User;
 }

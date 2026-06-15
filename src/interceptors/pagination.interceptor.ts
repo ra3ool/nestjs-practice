@@ -1,8 +1,8 @@
 import {
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -20,7 +20,6 @@ interface PaginatedResponse<T> {
   };
 }
 
-// Define a type for the expected paginated response structure
 type RawPaginated<T> = {
   total: number;
   page: number;
@@ -38,7 +37,6 @@ export class PaginationInterceptor<T>
   ): Observable<PaginatedResponse<T>> {
     return next.handle().pipe(
       map((response) => {
-        // If response is already in PaginatedResponse format, return it as-is to prevent nesting
         if (
           typeof response === 'object' &&
           response !== null &&
@@ -52,7 +50,6 @@ export class PaginationInterceptor<T>
           date: new Date().toISOString(),
         };
 
-        // Type guard for paginated response without using 'any'
         function isPaginatedResponse(obj: unknown): obj is RawPaginated<T> {
           if (typeof obj !== 'object' || obj === null) {
             return false;
@@ -71,7 +68,6 @@ export class PaginationInterceptor<T>
           );
         }
 
-        // Handle paginated response (e.g., from getAllInvoices)
         if (isPaginatedResponse(response)) {
           meta.pagination = {
             total: response.total,
@@ -82,12 +78,9 @@ export class PaginationInterceptor<T>
           return { data: response.invoices, meta };
         }
 
-        // Handle non-paginated response (e.g., single invoice)
-        // Try to avoid unsafe assignment by narrowing type
         if (typeof response === 'object' && response !== null) {
           return { data: response as T, meta };
         }
-        // For primitives, wrap as data
         return { data: response as T, meta };
       }),
     );
